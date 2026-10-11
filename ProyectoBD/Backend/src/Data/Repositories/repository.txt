@@ -1,0 +1,4 @@
+aqui deben ir los diferentes repositorios de cada clase
+que va a ser almacenada en la base de datos, puesto que aqui se define
+la manera en la que se va a relacionar el modelo (C#) y 
+la base de datos (mysql)

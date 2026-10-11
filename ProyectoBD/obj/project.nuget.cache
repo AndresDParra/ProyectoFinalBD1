@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "YUoRFv85KKw=",
+  "success": true,
+  "projectFilePath": "/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/ProyectoBD.csproj",
+  "expectedPackageFiles": [
+    "/home/mateo/.nuget/packages/microsoft.aspnetcore.app.ref/10.0.12/microsoft.aspnetcore.app.ref.10.0.12.nupkg.sha512"
+  ],
+  "logs": []
+}

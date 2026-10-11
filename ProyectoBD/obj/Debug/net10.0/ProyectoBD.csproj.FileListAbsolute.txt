@@ -1,0 +1,15 @@
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/bin/Debug/net10.0/ProyectoBD
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/bin/Debug/net10.0/ProyectoBD.deps.json
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/bin/Debug/net10.0/ProyectoBD.runtimeconfig.json
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/bin/Debug/net10.0/ProyectoBD.dll
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/bin/Debug/net10.0/ProyectoBD.pdb
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.GeneratedMSBuildEditorConfig.editorconfig
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.AssemblyInfoInputs.cache
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.AssemblyInfo.cs
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.csproj.CoreCompileInputs.cache
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.sourcelink.json
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.dll
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/refint/ProyectoBD.dll
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.pdb
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.genruntimeconfig.cache
+/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ref/ProyectoBD.dll
