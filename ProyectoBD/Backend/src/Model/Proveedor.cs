@@ -8,7 +8,7 @@
 public class Proveedor : Usuario
 {
     // representa la lista de productos que el proveedor ofrece, junto con el precio que este considera para cada producto
-    private List<ProductosOfertados> productosOfertados = new List<ProductosOfertados>();
+    private List<ProductoOfertado> productosOfertados = new List<ProductoOfertado>();
 
     public Proveedor(
         int idProveedor, // primary key del proveedor en la base de datos
@@ -40,7 +40,7 @@ public class Proveedor : Usuario
     /// </summary>
     /// <param name="producto">El producto a ofrecer.</param>
     /// <param name="precio">El precio del producto.</param>
-    public void ofrecerProducto(Producto producto, decimal precio)
+    public void OfrecerProducto(Producto producto, decimal precio)
     {
         if (producto == null)
         {
@@ -55,14 +55,14 @@ public class Proveedor : Usuario
             throw new InvalidOperationException("El producto ya está siendo ofrecido por este proveedor.");
         }
 
-        productosOfertados.Add(new ProductosOfertados(IdProveedor, producto, precio));
+        productosOfertados.Add(new ProductoOfertado(IdProveedor, producto, precio));
     }
 
     /// <summary>
     /// Permite al proveedor eliminar un producto que estaba ofreciendo.
     /// </summary>
     /// <param name="idProducto">El ID del producto a eliminar.</param>
-    public void eliminarProductoOfertado(int idProducto)
+    public void EliminarProductoOfertado(int idProducto)
     {
         if (!(idProducto <= 0))
         {
