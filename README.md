@@ -1,320 +1,273 @@
-# Proyecto Final — Bases de Datos I
+# Proyecto Final - Bases de Datos I
 
-## Ejecusion del metodo main en C# 
-primero se abre una terminal desde vs code
-luego se escribe: cd ProyectoBD
-finalmente se ejecuta: dotnet run
-para verificar que todo funcione debe mostrar "hello world" en la terminal
+Proyecto académico de la Universidad del Quindío para modelar una aplicación de gestión de usuarios, proveedores, vendedores y productos utilizando C#, .NET y MySQL.
 
-## Información académica
+## Integrantes
 
-Este repositorio corresponde al proyecto final de la asignatura **Bases de Datos I** de la **Universidad del Quindío**, perteneciente al programa de Ingeniería de Sistemas y Computación.
+- Mateo Gómez Marulanda
+- Andres David Parra
+- Juan David Castillo Hernandez
 
-### Integrantes
+## Estado actual
 
-- **Mateo Gómez Marulanda**
-- **Andres David Parra**
-- **Juan David Castillo Hernandez**
+El repositorio se encuentra en una etapa inicial de persistencia. Actualmente contiene:
 
-## Descripción general
+- Modelos de dominio para usuarios, proveedores, vendedores y productos.
+- Reglas básicas en memoria para las ofertas de productos.
+- Interfaces DAO para definir operaciones de acceso a datos.
+- Implementaciones DAO con SQL parametrizado para MySQL.
+- Una clase centralizada para construir y probar la conexión a la base de datos.
+- Un script SQL inicial con las tablas `categoria`, `producto` y `proveedor`.
 
-El proyecto contiene el modelo inicial de una aplicación de escritorio orientada a la gestión de usuarios, proveedores, vendedores y productos. La implementación está desarrollada en C# sobre .NET y organiza las clases del dominio en la carpeta `Prueba/model`.
+La aplicación todavía es un ejecutable de consola. [Program.cs](ProyectoBD/Program.cs) únicamente imprime `Hello, World!`; por tanto, los DAO no se ejecutan desde un flujo de aplicación y la conexión no se prueba automáticamente.
 
-El modelo representa principalmente:
+Todavía no están implementados:
 
-- La información común de los usuarios del sistema.
-- Los diferentes tipos de usuario.
-- Los productos disponibles.
-- Las categorías de productos.
-- La relación entre proveedores y productos ofrecidos.
-- La relación inicial entre vendedores y productos destinados a la venta.
+- API HTTP o controladores.
+- Inicio de sesión, almacenamiento seguro de contraseñas y emisión de tokens.
+- Roles y autorización de operaciones.
+- Servicios de aplicación que coordinen los DAO.
+- Reportes.
+- Interfaz gráfica o frontend web.
+- Pruebas automatizadas.
 
-La carpeta `Prueba/repository` está destinada a contener los repositorios que conectarán las clases del modelo con una base de datos MySQL. En el estado actual del proyecto, esta capa únicamente cuenta con un archivo descriptivo y todavía no contiene clases de acceso a datos.
-
-## Estructura del proyecto
+## Estructura actual
 
 ```text
 ProyectoFinalBD1/
-├── Prueba/
-│   ├── model/
-│   │   ├── Usuario.cs
-│   │   ├── Cliente.cs
-│   │   ├── Proveedor.cs
-│   │   ├── Vendedor.cs
-│   │   ├── Administrador.cs
-│   │   └── Producto/
-│   │       ├── Producto.cs
-│   │       ├── CategoriaProducto.cs
-│   │       └── ProductosOfertados.cs
-│   ├── repository/
-│   │   └── repository.txt
-│   ├── ProgramTest.cs
-│   └── VerificacionCSharp.csproj
-├── ProyectoFinal_2026_II.md
-└── README.md
+├── BDproyecto.sql                  # Esquema inicial de MySQL
+├── README.md
+├── He gawn                       
+└── ProyectoBD/
+    ├── Program.cs                 # Punto de entrada actual: aplicación de consola
+    ├── ProyectoBD.csproj          # Proyecto .NET 10 y paquete MySql.Data
+    └── Backend/
+        └── src/
+            ├── Model/             # Entidades, relaciones y reglas de dominio
+            │   ├── Usuario.cs
+            │   ├── Administrador.cs
+            │   ├── Proveedor.cs
+            │   ├── Vendedor.cs
+            │   └── Producto/
+            │       ├── Producto.cs
+            │       ├── ProductoOfertado.cs
+            │       └── CategoriaProducto.cs
+            └── Data/               # Conexión y acceso directo a MySQL
+                ├── Conexion.cs
+                ├── AdministradorDAO.cs
+                ├── ProductoDAO.cs
+                ├── ProductoOfertadoDAO.cs
+                ├── ProveedorDAO.cs
+                ├── VendedorDAO.cs
+                └── DAOInterface/
+                    ├── IAdministradorDAO.cs
+                    ├── IProductoDAO.cs
+                    ├── IProductoOfertadoDAO.cs
+                    ├── IProveedorDAO.cs
+                    └── IVendedorDAO.cs
 ```
 
-### Carpeta `model`
+Las carpetas `bin/` y `obj/` son artefactos generados por .NET y no forman parte de la arquitectura de la aplicación.
 
-Contiene las clases que representan los objetos principales del dominio de la aplicación. Estas clases definen atributos, constructores, relaciones y algunas reglas básicas de comportamiento.
+## Modelo de dominio
 
-### Carpeta `model/Producto`
+### Usuario
 
-Agrupa las clases relacionadas con los productos, sus categorías y las ofertas realizadas por los proveedores.
+`Usuario` es una clase abstracta con la información común de los usuarios:
 
-### Carpeta `repository`
+- Nombre.
+- Dirección.
+- Teléfono.
+- Cédula.
+- Correo.
+- Fecha de nacimiento.
+- Género.
 
-Está reservada para la capa de persistencia. Su objetivo es definir la forma en que los objetos del modelo se almacenarán, consultarán, actualizarán y eliminarán en MySQL.
+Las clases `Administrador`, `Proveedor` y `Vendedor` heredan de `Usuario` y agregan sus identificadores o datos específicos. No existe actualmente una clase `Cliente` en el código fuente.
 
-### Proyecto C#
+### Administrador
 
-El archivo `VerificacionCSharp.csproj` configura una aplicación ejecutable con:
+`Administrador` contiene `IdAdministrador`. El modelo lo considera el usuario con mayor nivel de gestión, pero esta autorización todavía no está implementada en servicios ni en una API.
 
-- SDK de Microsoft.
-- .NET 10 como framework objetivo.
-- `ImplicitUsings` habilitado.
-- Nullable Reference Types habilitado.
+### Proveedor
 
-## Modelo de clases
+`Proveedor` contiene `IdProveedor`, `NombreEmpresa` y `Ciudad`. También mantiene una colección privada de `ProductoOfertado` y expone estas reglas en memoria:
 
-### Clase `Usuario`
+- `OfrecerProducto(Producto, decimal)` exige un producto válido, un precio mayor que cero y evita duplicar el mismo producto para el proveedor.
+- `EliminarProductoOfertado(int)` elimina una oferta por el identificador del producto.
 
-Archivo: `Prueba/model/Usuario.cs`
+Estas operaciones modifican la colección del objeto. La persistencia de la oferta se realiza por separado mediante `ProductoOfertadoDAO`.
 
-`Usuario` es una clase abstracta que concentra la información común a los diferentes tipos de usuario del sistema. Al ser abstracta, no se puede instanciar directamente; sirve como clase base para las clases especializadas.
+### Vendedor
 
-Sus atributos son:
+`Vendedor` contiene `IdVendedor` y una lista `productosVenta`. La relación entre vendedor, inventario, cantidades y precio de venta todavía no está persistida.
 
-- `Nombre`
-- `Direccion`
-- `Telefono`
-- `Cedula`
-- `Correo`
-- `FechaNacimiento`
-- `Genero`
+### Producto y categorías
 
-El constructor tiene acceso `protected`, por lo que únicamente puede ser utilizado por las clases que heredan de `Usuario`. Sus propiedades permiten la lectura pública y restringen la modificación mediante `protected set`.
+`Producto` contiene:
 
-En consecuencia, `Usuario` funciona como la base común de la jerarquía de usuarios y evita repetir estos mismos atributos en cada clase derivada.
+- `IdProducto`.
+- `Nombre`.
+- `Descripcion`.
+- `Categoria`.
 
-### Clase `Cliente`
+`CategoriaProducto` es un `enum` con las categorías `Electronica`, `Ropa`, `Hogar`, `Deportes`, `Juguetes`, `Belleza`, `Alimentos`, `Libros`, `Musica` y `Peliculas`.
 
-Archivo: `Prueba/model/Cliente.cs`
+`ProductoOfertado` representa la relación entre un proveedor y un producto, junto con el precio que ofrece ese proveedor. Conceptualmente es una relación muchos a muchos, aunque el esquema SQL actual todavía no la representa de forma completa.
 
-`Cliente` hereda de `Usuario` y agrega el identificador:
+## Acceso a datos
 
-```csharp
-IdCliente
+Las interfaces de `Data/DAOInterface` definen los contratos de acceso a datos. Las implementaciones ejecutan SQL parametrizado usando `MySql.Data`.
+
+| DAO | Operaciones disponibles | Observaciones |
+| --- | --- | --- |
+| `AdministradorDAO` | Crear, consultar por ID y actualizar | No implementa eliminar. Solo permite crear el primer administrador. |
+| `ProveedorDAO` | Crear, consultar por ID, actualizar, eliminar y comprobar existencia | Solo persiste el identificador, el nombre de empresa y la ciudad. |
+| `VendedorDAO` | Crear, consultar por ID, actualizar, eliminar y comprobar existencia | La actualización actual asigna el mismo ID al mismo ID y no modifica otros datos. |
+| `ProductoDAO` | Crear, consultar por ID, actualizar, eliminar y comprobar existencia | La creación actual no envía `Prproveedor`, columna obligatoria del SQL. |
+| `ProductoOfertadoDAO` | Crear, actualizar precio, consultar por proveedor y eliminar | La consulta devuelve solo la primera oferta del proveedor. |
+
+`Conexion` centraliza la creación de conexiones MySQL y expone `ProbarAsync` para comprobar la conectividad. La cadena de conexión se obtiene en este orden:
+
+1. `MYSQL_CONNECTION_STRING`, si está definida.
+2. Variables individuales de entorno:
+   - `MYSQL_HOST` - valor predeterminado: `localhost`.
+   - `MYSQL_PORT` - opcional; MySQL usa `3306` por defecto.
+   - `MYSQL_DATABASE` - valor predeterminado: `proyecto`.
+   - `MYSQL_USER` - valor predeterminado: `root`.
+   - `MYSQL_PASSWORD` - valor predeterminado: cadena vacía.
+
+No se deben incluir contraseñas reales en el repositorio. Para otros entornos se recomienda configurar estas variables fuera del código fuente.
+
+## Base de datos
+
+El archivo [BDproyecto.sql](BDproyecto.sql) es un volcado de MySQL 8.0.46 para la base de datos `proyecto`. Actualmente crea estas tablas:
+
+### `categoria`
+
+- `Cacodigo`: clave primaria entera.
+- `Catipo`: nombre de la categoría.
+
+### `proveedor`
+
+- `Pcedula`: clave primaria y referencia utilizada por los productos.
+- `Pnombre`: nombre del proveedor.
+- `Ptelefono`: teléfono opcional.
+- `Pciudad`: ciudad.
+
+### `producto`
+
+- `Prid`: clave primaria autoincremental.
+- `Prnombre`: nombre.
+- `Prdecripcion`: descripción; el nombre de la columna conserva un error tipográfico del esquema original.
+- `Prproveedor`: proveedor obligatorio y clave foránea.
+- `Prcategoria`: categoría obligatoria y clave foránea.
+
+El script no crea actualmente las tablas `administrador`, `vendedor` ni `productoofertado`, aunque los DAO contienen SQL que las utiliza. Tampoco incluye datos iniciales para categorías. Por eso, los DAO relacionados no pueden ejecutarse correctamente contra una base creada únicamente con este script.
+
+## Requisitos
+
+- .NET SDK 10.
+- MySQL Server 8.0 o compatible.
+- Una base de datos llamada `proyecto`.
+- Paquete NuGet `MySql.Data` 9.4.0, restaurado automáticamente por el proyecto.
+
+La versión objetivo y la dependencia principal están declaradas en [ProyectoBD.csproj](ProyectoBD/ProyectoBD.csproj).
+
+## Configuración y ejecución
+
+Desde la raíz del repositorio:
+
+```bash
+cd ProyectoBD
+dotnet restore
+dotnet build
+dotnet run
 ```
 
-El constructor recibe el identificador del cliente junto con los datos generales heredados. Actualmente la clase representa los datos básicos del cliente, pero todavía no contiene métodos para compras, carritos, pedidos o consultas de productos.
-
-### Clase `Proveedor`
-
-Archivo: `Prueba/model/Proveedor.cs`
-
-`Proveedor` hereda de `Usuario` y representa a un proveedor de productos. Además de los datos generales, contiene:
-
-- `IdProveedor`
-- `NombreEmpresa`
-- `Ciudad`
-- Una colección privada de objetos `ProductosOfertados`
-
-La colección privada representa los productos que el proveedor ofrece y el precio asignado a cada uno.
-
-#### Método `ofrecerProducto`
-
-El método `ofrecerProducto(Producto producto, decimal precio)` permite registrar un producto ofrecido por el proveedor.
-
-Antes de agregar la oferta, aplica las siguientes validaciones:
-
-1. El producto no puede ser nulo.
-2. El precio debe ser mayor que cero.
-3. El proveedor no puede ofrecer dos veces el mismo producto.
-
-Cuando las validaciones se cumplen, se crea un objeto `ProductosOfertados` con el identificador del proveedor, el producto y el precio definido.
-
-#### Método `eliminarProductoOfertado`
-
-El método `eliminarProductoOfertado(int idProducto)` elimina de la colección privada las ofertas cuyo producto tenga el identificador indicado. La operación solamente se ejecuta cuando el identificador es positivo.
-
-### Clase `Vendedor`
-
-Archivo: `Prueba/model/Vendedor.cs`
-
-`Vendedor` hereda de `Usuario` y agrega:
-
-- `IdVendedor`
-- `productosVenta`
-
-`productosVenta` es una lista de objetos `Producto` que representa los productos que el vendedor tiene destinados a la venta.
-
-La relación entre vendedor y producto se encuentra en una etapa inicial. Actualmente no se almacenan datos adicionales de esa relación, como inventario, precio de venta, cantidad disponible o proveedor seleccionado.
-
-### Clase `Adminsitrador`
-
-Archivo: `Prueba/model/Administrador.cs`
-
-La clase representa al administrador del sistema y hereda de `Usuario`. Agrega el atributo:
-
-```csharp
-IdAdministrador
-```
-
-De acuerdo con la responsabilidad descrita en el código, el administrador corresponde al rol con mayor nivel de gestión dentro del sistema. Sin embargo, en el estado actual la clase solamente contiene los datos heredados, el identificador y el constructor; todavía no incluye métodos para administrar usuarios, productos o reportes.
-
-> **Nota:** el nombre actual de la clase está escrito como `Adminsitrador`. La documentación conserva el nombre existente en el código.
-
-### Clase `Producto`
-
-Archivo: `Prueba/model/Producto/Producto.cs`
-
-`Producto` representa una unidad que puede ser ofrecida por un proveedor y destinada a la venta por un vendedor.
-
-Sus atributos son:
-
-- `IdProducto`
-- `Nombre`
-- `Descripcion`
-- `Categoria`
-
-El atributo `Categoria` utiliza el tipo enumerado `CategoriaProducto`. El precio no se encuentra en esta clase, porque el diseño actual permite que un mismo producto sea ofrecido por diferentes proveedores con precios distintos.
-
-### Enumeración `CategoriaProducto`
-
-Archivo: `Prueba/model/Producto/CategoriaProducto.cs`
-
-`CategoriaProducto` define las categorías disponibles para clasificar los productos:
-
-- `Electronica`
-- `Ropa`
-- `Hogar`
-- `Deportes`
-- `Juguetes`
-- `Belleza`
-- `Alimentos`
-- `Libros`
-- `Musica`
-- `Peliculas`
-
-Actualmente las categorías están implementadas como un `enum` de C#. Esto significa que se manejan como valores fijos del código y no como una entidad independiente con atributos propios.
-
-### Clase `ProductosOfertados`
-
-Archivo: `Prueba/model/Producto/ProductosOfertados.cs`
-
-`ProductosOfertados` actúa como clase intermedia entre `Proveedor` y `Producto`.
-
-La clase es necesaria porque la relación entre proveedores y productos es de muchos a muchos:
-
-- Un proveedor puede ofrecer varios productos.
-- Un producto puede ser ofrecido por varios proveedores.
-- Cada proveedor puede establecer un precio diferente para el mismo producto.
-
-Sus atributos son:
-
-- `ProveedorId`
-- `Producto`
-- `Precio`
-
-En una futura representación relacional, esta clase correspondería conceptualmente a una tabla intermedia que tendría, como mínimo, los identificadores del proveedor y del producto, además del precio de la oferta.
-
-## Relaciones entre las clases
-
-### Herencia de usuarios
-
-La jerarquía de herencia se representa de la siguiente manera:
+La ejecución actual muestra:
 
 ```text
-                         Usuario
-                    (clase abstracta)
-                              |
-          ---------------------------------------------
-          |                    |          |            |
-       Cliente             Proveedor   Vendedor   Adminsitrador
+Hello, World!
 ```
 
-Todas las clases derivadas reutilizan los atributos generales definidos en `Usuario` y agregan sus propios identificadores o comportamientos.
+Para configurar MySQL en Linux, por ejemplo:
 
-### Relación entre `Proveedor`, `ProductosOfertados` y `Producto`
+```bash
+export MYSQL_HOST=localhost
+export MYSQL_PORT=3306
+export MYSQL_DATABASE=proyecto
+export MYSQL_USER=tu_usuario
+export MYSQL_PASSWORD='tu contraseña'
+```
 
-La relación se representa así:
+Después se puede importar el esquema desde MySQL:
+
+```bash
+mysql -u tu_usuario -p proyecto < BDproyecto.sql
+```
+
+La aplicación actual no carga ni ejecuta automáticamente `BDproyecto.sql`, y tampoco llama a `Conexion.ProbarAsync`; esos pasos deben realizarse antes de probar los DAO directamente.
+
+## Arquitectura prevista
+
+Para integrar un frontend web en el futuro, la aplicación debería evolucionar hacia una API ASP.NET Core con capas separadas:
 
 ```text
-Proveedor 1 ─────── N ProductosOfertados N ─────── 1 Producto
+Frontend web (React, Vue, Angular u otro)
+                    |
+              HTTP / JSON
+                    |
+API / Controllers
+                    |
+Application / Services / DTOs
+                    |
+Domain / Entities
+                    |
+Infrastructure / Repositories / MySQL
 ```
 
-Conceptualmente, esto representa una relación de muchos a muchos entre proveedores y productos:
+Una estructura futura recomendada sería:
 
 ```text
-Proveedor N ───────────────── N Producto
+Backend/src/
+├── Api/
+│   ├── Controllers/
+│   └── Middleware/
+├── Application/
+│   ├── DTOs/
+│   ├── Interfaces/
+│   └── Services/
+├── Domain/
+│   ├── Entities/
+│   ├── Enums/
+│   └── Exceptions/
+└── Infrastructure/
+    ├── Authentication/
+    ├── Data/
+    └── Reports/
 ```
 
-`ProductosOfertados` permite resolver esta relación y almacenar el precio específico que cada proveedor asigna a cada producto.
+Las responsabilidades previstas son:
 
-El flujo principal implementado es:
+- `Domain`: entidades y reglas propias del negocio; no debe contener SQL.
+- `Infrastructure/Data`: repositorios o DAO y detalles de MySQL.
+- `Application/Services`: casos de uso, validaciones y coordinación entre repositorios.
+- `Api/Controllers`: entrada HTTP y respuestas para el frontend.
+- `Infrastructure/Authentication`: hash de contraseñas, validación de credenciales y tokens.
+- `Infrastructure/Reports`: generación de PDF, Excel o CSV a partir de datos obtenidos por servicios.
 
-```text
-Proveedor
-   └── productosOfertados
-          └── ProductosOfertados
-                 └── Producto
-```
+La autorización por rol debe estar en servicios y políticas de la API, no dentro de las entidades ni de los DAO. Las contraseñas nunca deben almacenarse en texto plano; deben guardarse como hashes utilizando una solución segura.
 
-### Relación entre `Vendedor` y `Producto`
+## Problemas conocidos
 
-La clase `Vendedor` mantiene una lista de productos:
+Antes de considerar funcional la persistencia, es necesario resolver como mínimo:
 
-```text
-Vendedor 1 ───────────────── N Producto
-```
-
-Esta relación representa los productos que el vendedor tiene disponibles para vender. En el código actual todavía no existe una clase intermedia para almacenar información específica de la relación, como cantidades, precios de venta o inventario.
-
-### Relación entre `Producto` y `CategoriaProducto`
-
-Cada objeto `Producto` contiene un valor de `CategoriaProducto`:
-
-```text
-Producto N ───────────────── 1 CategoriaProducto
-```
-
-La categoría se encuentra implementada como enumeración y no como una clase independiente.
-
-## Capa `repository`
-
-Archivo actual: `Prueba/repository/repository.txt`
-
-La carpeta `repository` está destinada a contener los repositorios correspondientes a las clases que serán almacenadas en la base de datos. Estos repositorios deberán servir como enlace entre:
-
-```text
-Objetos del modelo C#  ↔  Base de datos MySQL
-```
-
-En el estado actual del proyecto todavía no existen clases de repositorio ni operaciones de persistencia implementadas. Por lo tanto, aún no se encuentran definidos:
-
-- La conexión con MySQL.
-- Las cadenas de conexión.
-- Los comandos SQL.
-- Las operaciones CRUD.
-- El mapeo entre registros de la base de datos y objetos C#.
-- Las consultas de proveedores y productos.
-- El almacenamiento de las ofertas.
-- Las transacciones de base de datos.
-
-La estructura futura de esta capa deberá permitir que las clases del modelo permanezcan separadas de los detalles de acceso a datos. De esta forma, `model` representará las entidades y `repository` se encargará de comunicarse con MySQL.
-
-## Resumen del estado actual
-
-Actualmente se encuentran implementados:
-
-- La clase base abstracta `Usuario`.
-- Las clases derivadas `Cliente`, `Proveedor`, `Vendedor` y `Adminsitrador`.
-- La clase `Producto`.
-- La enumeración `CategoriaProducto`.
-- La clase intermedia `ProductosOfertados`.
-- La asociación entre proveedores y productos mediante ofertas.
-- Las validaciones básicas al registrar una oferta.
-- La colección inicial de productos asociados a un vendedor.
-
-La parte de persistencia todavía se encuentra pendiente. En consecuencia, las relaciones descritas en este documento están modeladas actualmente como objetos y colecciones en memoria; aún no están conectadas con tablas reales de MySQL.
+1. Crear en `BDproyecto.sql` las tablas que utilizan `AdministradorDAO`, `VendedorDAO` y `ProductoOfertadoDAO`.
+2. Definir si un producto tiene un único proveedor (`Prproveedor`) o varios proveedores mediante `productoofertado`; actualmente el modelo y el SQL son inconsistentes.
+3. Corregir el alta de productos para suministrar un proveedor válido o modificar el esquema relacional.
+4. Agregar los códigos iniciales de `categoria` y fijar su correspondencia con `CategoriaProducto`.
+5. Completar el mapeo de los datos de `Usuario`, ya que los DAO actuales devuelven varios campos con valores vacíos.
+6. Corregir las actualizaciones que actualmente no modifican información real.
+7. Añadir consultas que devuelvan colecciones cuando un proveedor tenga varias ofertas.
+8. Incorporar transacciones donde una operación modifique varias tablas relacionadas.
