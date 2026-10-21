@@ -15,13 +15,24 @@ public class VendedorDAO : IVendedorDAO
         ArgumentNullException.ThrowIfNull(vendedor);
 
         const string sql = """
-            INSERT INTO vendedor (VidVendedor)
-            VALUES (@idVendedor);
+            INSERT INTO vendedor (
+                VidVendedor, Vnombre, Vdireccion, Vtelefono,
+                Vcedula, Vcorreo, VfechaNacimiento, Vgenero)
+            VALUES (
+                @idVendedor, @nombre, @direccion, @telefono,
+                @cedula, @correo, @fechaNacimiento, @genero);
             """;
 
         using var conexion = Conexion.Obtener();
         using var comando = new MySqlCommand(sql, conexion);
         comando.Parameters.AddWithValue("@idVendedor", vendedor.IdVendedor);
+        comando.Parameters.AddWithValue("@nombre", vendedor.Nombre);
+        comando.Parameters.AddWithValue("@direccion", vendedor.Direccion);
+        comando.Parameters.AddWithValue("@telefono", vendedor.Telefono);
+        comando.Parameters.AddWithValue("@cedula", vendedor.Cedula);
+        comando.Parameters.AddWithValue("@correo", vendedor.Correo);
+        comando.Parameters.AddWithValue("@fechaNacimiento", vendedor.FechaNacimiento.ToDateTime(TimeOnly.MinValue));
+        comando.Parameters.AddWithValue("@genero", vendedor.Genero);
 
         conexion.Open();
         return comando.ExecuteNonQuery() == 1;
@@ -89,18 +100,13 @@ public class VendedorDAO : IVendedorDAO
         return comando.ExecuteNonQuery() == 1;
     }
 
-    public bool Existe(string idVendedor)
+    public bool Existe(int idVendedor)
     {
-        if (!int.TryParse(idVendedor, out var id))
-        {
-            return false;
-        }
-
         const string sql = "SELECT EXISTS(SELECT 1 FROM vendedor WHERE VidVendedor = @idVendedor);";
 
         using var conexion = Conexion.Obtener();
         using var comando = new MySqlCommand(sql, conexion);
-        comando.Parameters.AddWithValue("@idVendedor", id);
+        comando.Parameters.AddWithValue("@idVendedor", idVendedor);
 
         conexion.Open();
         return Convert.ToInt32(comando.ExecuteScalar()) == 1;

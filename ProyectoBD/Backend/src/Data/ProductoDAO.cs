@@ -97,18 +97,13 @@ public class ProductoDAO : IProductoDAO
         return comando.ExecuteNonQuery() == 1;
     }
 
-    public bool Existe(string idProducto)
+    public bool Existe(int idProducto)
     {
-        if (!int.TryParse(idProducto, out var id))
-        {
-            return false;
-        }
-
         const string sql = "SELECT EXISTS(SELECT 1 FROM producto WHERE Prid = @idProducto);";
 
         using var conexion = Conexion.Obtener();
         using var comando = new MySqlCommand(sql, conexion);
-        comando.Parameters.AddWithValue("@idProducto", id);
+        comando.Parameters.AddWithValue("@idProducto", idProducto);
 
         conexion.Open();
         return Convert.ToInt32(comando.ExecuteScalar()) == 1;

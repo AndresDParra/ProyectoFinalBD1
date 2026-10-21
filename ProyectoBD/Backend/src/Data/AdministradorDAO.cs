@@ -9,8 +9,12 @@ public class AdministradorDAO : IAdministradorDAO
 
 		const string verificarSql = "SELECT COUNT(*) FROM administrador;";
 		const string insertarSql = """
-			INSERT INTO administrador (AidAdministrador)
-			VALUES (@idAdministrador);
+			INSERT INTO administrador (
+				AidAdministrador, Anombre, Adireccion, Atelefono,
+				Acedula, Acorreo, AfechaNacimiento, Agenero)
+			VALUES (
+				@idAdministrador, @nombre, @direccion, @telefono,
+				@cedula, @correo, @fechaNacimiento, @genero);
 			""";
 
 		using var conexion = Conexion.Obtener();
@@ -26,6 +30,13 @@ public class AdministradorDAO : IAdministradorDAO
 
 		using var insertar = new MySqlCommand(insertarSql, conexion, transaccion);
 		insertar.Parameters.AddWithValue("@idAdministrador", administrador.IdAdministrador);
+		insertar.Parameters.AddWithValue("@nombre", administrador.Nombre);
+		insertar.Parameters.AddWithValue("@direccion", administrador.Direccion);
+		insertar.Parameters.AddWithValue("@telefono", administrador.Telefono);
+		insertar.Parameters.AddWithValue("@cedula", administrador.Cedula);
+		insertar.Parameters.AddWithValue("@correo", administrador.Correo);
+		insertar.Parameters.AddWithValue("@fechaNacimiento", administrador.FechaNacimiento.ToDateTime(TimeOnly.MinValue));
+		insertar.Parameters.AddWithValue("@genero", administrador.Genero);
 
 		var insertado = insertar.ExecuteNonQuery() == 1;
 		transaccion.Commit();
@@ -79,5 +90,21 @@ public class AdministradorDAO : IAdministradorDAO
 
 		conexion.Open();
 		return comando.ExecuteNonQuery() == 1;
+	}
+
+	public bool Existe(int idAdministrador)
+	{
+		const string sql = """
+			SELECT COUNT(*)
+			FROM administrador
+			WHERE AidAdministrador = @idAdministrador;
+			""";
+
+		using var conexion = Conexion.Obtener();
+		using var comando = new MySqlCommand(sql, conexion);
+		comando.Parameters.AddWithValue("@idAdministrador", idAdministrador);
+
+		conexion.Open();
+		return Convert.ToInt32(comando.ExecuteScalar()) > 0;
 	}
 }

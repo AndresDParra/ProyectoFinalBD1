@@ -49,7 +49,25 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
         return comando.ExecuteNonQuery() == 1;
     }
 
-    public ProductoOfertado ConsultarIdProveedor(int idProveedor)
+    public bool ExistePorProducto(int idProducto)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM productoofertado
+                WHERE Prfproducto = @idProducto
+            );
+            """;
+
+        using var conexion = Conexion.Obtener();
+        using var comando = new MySqlCommand(sql, conexion);
+        comando.Parameters.AddWithValue("@idProducto", idProducto);
+
+        conexion.Open();
+        return Convert.ToBoolean(comando.ExecuteScalar());
+    }
+
+    public List<ProductoOfertado> ConsultarIdProveedor(int idProveedor)
     {
         const string sql = """
             SELECT po.Prfproveedor,
@@ -61,8 +79,7 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
             FROM productoofertado po
             INNER JOIN producto p ON p.Prid = po.Prfproducto
             WHERE po.Prfproveedor = @idProveedor
-            ORDER BY po.Prfproducto
-            LIMIT 1;
+            ORDER BY po.Prfproducto;
             """;
 
         using var conexion = Conexion.Obtener();
@@ -72,9 +89,51 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
         conexion.Open();
         using var lector = comando.ExecuteReader();
 
+        var productosOfertados = new List<ProductoOfertado>();
+
+        while (lector.Read())
+        {
+            var producto = new Producto(
+                lector.GetInt32("Prid"),
+                lector.GetString("Prnombre"),
+                lector.GetString("Prdecripcion"),
+                (CategoriaProducto)lector.GetInt32("Prcategoria"));
+
+            productosOfertados.Add(new ProductoOfertado(
+                lector.GetInt32("Prfproveedor"),
+                producto,
+                lector.GetDecimal("Prfprecio")));
+        }
+
+        return productosOfertados;
+    }
+
+    public ProductoOfertado ConsultarIdProducto(int idProducto)
+    {
+        const string sql = """
+            SELECT po.Prfproveedor,
+                   po.Prfprecio,
+                   p.Prid,
+                   p.Prnombre,
+                   p.Prdecripcion,
+                   p.Prcategoria
+            FROM productoofertado po
+            INNER JOIN producto p ON p.Prid = po.Prfproducto
+            WHERE po.Prfproducto = @idProducto
+            ORDER BY po.Prfproveedor
+            LIMIT 1;
+            """;
+
+        using var conexion = Conexion.Obtener();
+        using var comando = new MySqlCommand(sql, conexion);
+        comando.Parameters.AddWithValue("@idProducto", idProducto);
+
+        conexion.Open();
+        using var lector = comando.ExecuteReader();
+
         if (!lector.Read())
         {
-            throw new KeyNotFoundException($"El proveedor {idProveedor} no tiene productos ofertados.");
+            throw new KeyNotFoundException($"El producto {idProducto} no está ofertado.");
         }
 
         var producto = new Producto(

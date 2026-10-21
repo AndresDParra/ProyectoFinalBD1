@@ -34,40 +34,4 @@ public class Proveedor : Usuario
     public int IdProveedor { get; private set; }
     public string NombreEmpresa { get; private set; }
     public string Ciudad { get; private set; }
-
-    /// <summary>
-    /// Permite al proveedor ofrecer un producto con un precio específico.
-    /// </summary>
-    /// <param name="producto">El producto a ofrecer.</param>
-    /// <param name="precio">El precio del producto.</param>
-    public void OfrecerProducto(Producto producto, decimal precio)
-    {
-        if (producto == null)
-        {
-            throw new ArgumentNullException(nameof(producto), "El producto no puede ser nulo.");
-        }
-        if (precio <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(precio), "El precio debe ser mayor que cero.");
-        }
-        if (productosOfertados.Any(po => po.Producto.IdProducto == producto.IdProducto))
-        {
-            throw new InvalidOperationException("El producto ya está siendo ofrecido por este proveedor.");
-        }
-
-        productosOfertados.Add(new ProductoOfertado(IdProveedor, producto, precio));
-    }
-
-    /// <summary>
-    /// Permite al proveedor eliminar un producto que estaba ofreciendo.
-    /// </summary>
-    /// <param name="idProducto">El ID del producto a eliminar.</param>
-    public void EliminarProductoOfertado(int idProducto)
-    {
-        if (!(idProducto <= 0))
-        {
-            productosOfertados.RemoveAll(po => po.Producto.IdProducto == idProducto);
-        }
-
-    }
 }
