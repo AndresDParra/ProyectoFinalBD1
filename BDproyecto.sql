@@ -16,6 +16,34 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `administrador`
+--
+
+DROP TABLE IF EXISTS `administrador`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `administrador` (
+  `idadministrador` int NOT NULL,
+  `nombre` varchar(20) DEFAULT NULL,
+  `direccion` varchar(30) DEFAULT NULL,
+  `telefono` varchar(10) DEFAULT NULL,
+  `cedula` varchar(30) DEFAULT NULL,
+  `fechanacimiento` date DEFAULT NULL,
+  `genero` varchar(10) DEFAULT NULL,
+  PRIMARY KEY (`idadministrador`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `administrador`
+--
+
+LOCK TABLES `administrador` WRITE;
+/*!40000 ALTER TABLE `administrador` DISABLE KEYS */;
+/*!40000 ALTER TABLE `administrador` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `categoria`
 --
 
@@ -47,15 +75,10 @@ DROP TABLE IF EXISTS `producto`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `producto` (
   `Prid` int NOT NULL AUTO_INCREMENT,
-  `Prnombre` varchar(30) NOT NULL,
-  `Prdecripcion` varchar(50) NOT NULL,
-  `Prproveedor` int NOT NULL,
-  `Prcategoria` int NOT NULL,
-  PRIMARY KEY (`Prid`),
-  KEY `fk_Cacategoria` (`Prproveedor`),
-  KEY `fk_Prcatalogo_idx` (`Prcategoria`),
-  CONSTRAINT `fk_Prcatalogo` FOREIGN KEY (`Prcategoria`) REFERENCES `categoria` (`Cacodigo`),
-  CONSTRAINT `fk_Prproveedor` FOREIGN KEY (`Prproveedor`) REFERENCES `proveedor` (`Pcedula`) ON DELETE RESTRICT ON UPDATE CASCADE
+  `nombre` varchar(30) DEFAULT NULL,
+  `descripcion` varchar(50) DEFAULT NULL,
+  `categoria` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`Prid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -69,6 +92,33 @@ LOCK TABLES `producto` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `productosofertados`
+--
+
+DROP TABLE IF EXISTS `productosofertados`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `productosofertados` (
+  `proveedorid` int NOT NULL,
+  `producto` int DEFAULT NULL,
+  `precio` decimal(12,2) DEFAULT NULL,
+  PRIMARY KEY (`proveedorid`),
+  KEY `fk_producto_idx` (`producto`),
+  CONSTRAINT `fk_producto` FOREIGN KEY (`producto`) REFERENCES `producto` (`Prid`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_proveedor` FOREIGN KEY (`proveedorid`) REFERENCES `proveedor` (`idproveedor`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `productosofertados`
+--
+
+LOCK TABLES `productosofertados` WRITE;
+/*!40000 ALTER TABLE `productosofertados` DISABLE KEYS */;
+/*!40000 ALTER TABLE `productosofertados` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `proveedor`
 --
 
@@ -76,11 +126,16 @@ DROP TABLE IF EXISTS `proveedor`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `proveedor` (
-  `Pcedula` int NOT NULL,
-  `Pnombre` varchar(20) NOT NULL,
-  `Ptelefono` varchar(10) DEFAULT NULL,
-  `Pciudad` varchar(30) NOT NULL,
-  PRIMARY KEY (`Pcedula`)
+  `idproveedor` int NOT NULL,
+  `nombreempresa` varchar(50) DEFAULT NULL,
+  `ciudad` varchar(30) DEFAULT NULL,
+  `nombre` varchar(40) DEFAULT NULL,
+  `direccion` varchar(50) DEFAULT NULL,
+  `cedula` varchar(30) DEFAULT NULL,
+  `correo` varchar(30) DEFAULT NULL,
+  `fechanacimiento` date DEFAULT NULL,
+  `genero` varchar(10) DEFAULT NULL,
+  PRIMARY KEY (`idproveedor`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -92,6 +147,34 @@ LOCK TABLES `proveedor` WRITE;
 /*!40000 ALTER TABLE `proveedor` DISABLE KEYS */;
 /*!40000 ALTER TABLE `proveedor` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `vendedor`
+--
+
+DROP TABLE IF EXISTS `vendedor`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `vendedor` (
+  `idvendedor` int NOT NULL,
+  `nombre` varchar(20) NOT NULL,
+  `direccion` varchar(30) DEFAULT NULL,
+  `telefono` varchar(10) NOT NULL,
+  `cedula` varchar(30) NOT NULL,
+  `fechanacimiento` date DEFAULT NULL,
+  `genero` varchar(10) DEFAULT NULL,
+  PRIMARY KEY (`idvendedor`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `vendedor`
+--
+
+LOCK TABLES `vendedor` WRITE;
+/*!40000 ALTER TABLE `vendedor` DISABLE KEYS */;
+/*!40000 ALTER TABLE `vendedor` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -102,4 +185,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-19 19:03:48
+-- Dump completed on 2026-10-21 19:28:13
