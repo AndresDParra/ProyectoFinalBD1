@@ -20,5 +20,5 @@ public interface IProveedorDAO
     /// Verifica si un proveedor existe por su ID
     /// </summary>
 
-    bool Existe(string idProveedor);
+    bool Existe(int idProveedor);
 }

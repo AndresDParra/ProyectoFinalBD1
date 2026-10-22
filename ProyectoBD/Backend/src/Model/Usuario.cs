@@ -24,8 +24,8 @@ public abstract class Usuario
     public string Nombre { get; protected set; }
     public string Direccion { get; protected set; }
     public string Telefono { get; protected set; }
-    public string Cedula { get; protected set; }
+    public string Cedula { get; }
     public string Correo { get; protected set; }
-    public DateOnly FechaNacimiento { get; protected set; }
-    public string Genero { get; protected set; }
+    public DateOnly FechaNacimiento { get; }
+    public string Genero { get; }
 }

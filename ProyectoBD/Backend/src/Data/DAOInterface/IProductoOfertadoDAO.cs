@@ -11,7 +11,9 @@ public interface IProductoOfertadoDAO
 {
     bool Crear(ProductoOfertado ofertado);
     bool ActualizarPrecio(int idProveedor, int idProducto, decimal nuevoPrecio);
+    bool ExistePorProducto(int idProducto);
 
-    ProductoOfertado ConsultarIdProveedor(int idProveedor);
+    List<ProductoOfertado> ConsultarIdProveedor(int idProveedor);
+    ProductoOfertado ConsultarIdProducto(int idProducto);
     bool Eliminar(int idProveedor, int idProducto);
 }

@@ -20,5 +20,5 @@ public interface IVendedorDAO
     /// Verifica si un vendedor existe por su ID
     /// </summary>
     /// 
-    bool Existe(string idVendedor);
+    bool Existe(int idVendedor);
 }

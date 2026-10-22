@@ -5,9 +5,10 @@
 /// </summary>
 
 
-public class Adminsitrador : Usuario
+
+public class Administrador : Usuario
 {
-    public Adminsitrador(
+    public Administrador(
         int idAdministrador, // primary key del administrador en la base de datos
 
 
