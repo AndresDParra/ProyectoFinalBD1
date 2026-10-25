@@ -4,6 +4,13 @@ using MySql.Data.MySqlClient;
 public class UsuarioDAO : IUsuarioDAO
 {
 
+    /// <summary>
+    /// metodos auxiliares que facilitan la gestion de usuarios y validan su estado antes de realizar operaciones CRUD
+    /// </summary>
+
+    /// <summary>
+    /// Valida que el usuario pueda ser gestionado mediante el CRUD habitual.
+    /// </summary>
     private static void ValidarUsuarioParaCrud(Usuario usuario)
     {
         ArgumentNullException.ThrowIfNull(usuario);
@@ -14,6 +21,9 @@ public class UsuarioDAO : IUsuarioDAO
 
     }
 
+    /// <summary>
+    /// Obtiene y valida el rol de un usuario bloqueando su fila durante la transaccion.
+    /// </summary>
     private static RolUsuario ObtenerRolBloqueado(MySqlConnection conexion, MySqlTransaction transaccion, int idUsuario)
     {
         const string sql = "SELECT idTipoUsuario FROM Usuario WHERE idUsuario = @idUsuario FOR UPDATE;";
@@ -32,11 +42,9 @@ public class UsuarioDAO : IUsuarioDAO
         return (RolUsuario)valorRol;
     }
 
-    private static UsuarioDaoException ErrorDeBaseDeDatos(MySqlException exception)
-    {
-        return new UsuarioDaoException("La operación de usuario no pudo completarse en MySQL.", exception);
-    }
-
+    /// <summary>
+    /// Convierte un valor de texto de MySQL en una cadena nullable y elimina sus espacios externos.
+    /// </summary>
     private static string? LeerTextoNullable(MySqlDataReader reader, string columna)
     {
         object valor = reader[columna];
@@ -47,8 +55,12 @@ public class UsuarioDAO : IUsuarioDAO
     /// metodos para consultar usuario apartir de sus diferentes atributos
     /// </summary>
 
+
     public Usuario ObtenerUsuarioPorId(int id) { return null; }
+
+
     public Usuario ObtenerUsuarioPorCedula(string cedula) { return null; }
+
     public Usuario ObtenerUsuarioPorCorreo(string correo) { return null; }
     public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario) { return null; }
 
@@ -58,6 +70,7 @@ public class UsuarioDAO : IUsuarioDAO
     /// </summary>
 
     public List<Usuario> ObtenerUsuarioPorIdTipo(string tipo) { return null; }
+
     public List<Usuario> ObtenerUsuarioPorNombre(string nombre) { return null; }
 
     /// <summary>
@@ -133,7 +146,7 @@ public class UsuarioDAO : IUsuarioDAO
         }
         catch (MySqlException exception)
         {
-            throw ErrorDeBaseDeDatos(exception);
+            throw new ErrorDeBaseDeDatos(exception);
         }
     }
 
@@ -200,7 +213,7 @@ public class UsuarioDAO : IUsuarioDAO
         }
         catch (MySqlException exception)
         {
-            throw ErrorDeBaseDeDatos(exception);
+            throw new ErrorDeBaseDeDatos(exception);
         }
     }
 
@@ -232,7 +245,7 @@ public class UsuarioDAO : IUsuarioDAO
         }
         catch (MySqlException exception)
         {
-            throw ErrorDeBaseDeDatos(exception);
+            throw new ErrorDeBaseDeDatos(exception);
         }
     }
 }

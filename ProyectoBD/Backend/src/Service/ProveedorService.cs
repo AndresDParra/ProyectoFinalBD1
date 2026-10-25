@@ -33,7 +33,7 @@ public class ProveedorService
 
     // operaciones sobre los productos ofertados
 
-    public bool CrearProductoOfertado(Producto producto, decimal precio)
+    public bool CrearProductoOfertado(Producto producto, decimal precio, int tiempoEntrega = 0)
     {
         ArgumentNullException.ThrowIfNull(producto);
 
@@ -45,7 +45,8 @@ public class ProveedorService
         ProductoOfertado nuevoProductoOfertado = new ProductoOfertado(
             _idProveedorAutenticado,
             producto,
-            precio);
+            precio,
+            tiempoEntrega);
 
         return _productoOfertadoDao.Crear(nuevoProductoOfertado);
     }
