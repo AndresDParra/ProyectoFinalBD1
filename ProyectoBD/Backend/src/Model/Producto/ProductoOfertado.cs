@@ -14,15 +14,18 @@ public class ProductoOfertado
     public ProductoOfertado(
         int proveedorId, // foreign key del proveedor en la base de datos
         Producto producto, // en la BD se usara el idProducto como foreign key
-        decimal precio // representa el precio del producto ofrecido por el proveedor
+        decimal precio, // representa el precio del producto ofrecido por el proveedor
+        int tiempoEntrega // representa el tiempo de entrega del producto ofrecido por el proveedor (en dias)
     )
     {
         ProveedorId = proveedorId;
         Producto = producto;
         Precio = precio;
+        TiempoEntrega = tiempoEntrega;
     }
 
     public int ProveedorId { get; private set; }
     public Producto Producto { get; private set; }
     public decimal Precio { get; private set; }
+    public int TiempoEntrega { get; private set; }
 }
