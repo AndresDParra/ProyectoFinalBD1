@@ -15,6 +15,7 @@ public interface IUsuarioDAO
     /// </summary>
 
     Usuario ObtenerUsuarioPorId(int id);
+    Usuario ObtenerUsuarioPorNombre(string nombre);
     Usuario ObtenerUsuarioPorCedula(string cedula);
     Usuario ObtenerUsuarioPorCorreo(string correo);
     RolUsuario? ObtenerRolUsuarioPorId(int id); // se habilita el nulleable con '?' para poder retornar null en caso de que no se encuentre el rol del usuario
@@ -24,7 +25,6 @@ public interface IUsuarioDAO
     /// </summary>
 
     List<Usuario> ObtenerUsuarioPorIdTipo(string tipo);
-    List<Usuario> ObtenerUsuarioPorNombre(string nombre);
 
     /// <summary>
     /// metodos para consultar lista de proveedores apartir de sus diferentes atributos
@@ -40,4 +40,10 @@ public interface IUsuarioDAO
     bool CrearUsuario(Usuario usuario);
     bool ActualizarUsuario(Usuario usuario);
     bool EliminarUsuario(int id);
+
+    /// <summary>
+    /// metodos para validar la existencia de un usuario en el sistema
+    /// </summary>
+
+    bool ExisteUsuario(int id);
 }

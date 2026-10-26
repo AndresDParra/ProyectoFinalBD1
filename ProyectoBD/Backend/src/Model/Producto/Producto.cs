@@ -12,6 +12,20 @@ public class Producto
         CategoriaProducto categoria // por ahora es un enum
     )
     {
+        if (string.IsNullOrWhiteSpace(nombre))
+        {
+            throw new ArgumentException("El nombre del producto no puede estar vacío o ser nulo.");
+        }
+
+        if (string.IsNullOrWhiteSpace(descripcion))
+        {
+            throw new ArgumentException("La descripción del producto no puede estar vacía o ser nula.");
+        }
+
+        CategoriaProducto categoriaValida = Enum.IsDefined(typeof(CategoriaProducto), categoria)
+            ? categoria
+            : throw new ArgumentException("La categoría del producto no es válida.");
+
         IdProducto = idProducto;
         Nombre = nombre;
         Descripcion = descripcion;

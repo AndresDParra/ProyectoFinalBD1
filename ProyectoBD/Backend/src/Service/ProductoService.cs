@@ -36,7 +36,7 @@ public class ProductoService
 
         if (_productoOfertadoDAO.ExistePorProducto(idProducto))
         {
-            return false;
+            return false; // retorna false si el producto está siendo ofertado por algún proveedor
         }
 
         return _productoDAO.Eliminar(idProducto);

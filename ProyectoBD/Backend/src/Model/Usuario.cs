@@ -19,6 +19,26 @@ public class Usuario
         string? ciudad = null
         )
     {
+        if (string.IsNullOrWhiteSpace(nombre))
+            throw new ArgumentException("Nombre no puede estar vacío.", nameof(nombre));
+        if (string.IsNullOrWhiteSpace(direccion))
+            throw new ArgumentException("Dirección no puede estar vacía.", nameof(direccion));
+
+        if (string.IsNullOrWhiteSpace(telefono))
+            throw new ArgumentException("Teléfono no puede estar vacío.", nameof(telefono));
+
+        if (string.IsNullOrWhiteSpace(cedula))
+            throw new ArgumentException("Cédula no puede estar vacía.", nameof(cedula));
+
+        if (string.IsNullOrWhiteSpace(correo))
+            throw new ArgumentException("Correo no puede estar vacío.", nameof(correo));
+
+        if (fechaNacimiento == default)
+            throw new ArgumentException("Fecha de nacimiento no puede estar vacía.", nameof(fechaNacimiento));
+
+        if (string.IsNullOrWhiteSpace(genero))
+            throw new ArgumentException("Género no puede estar vacío.", nameof(genero));
+
         Nombre = nombre;
         Direccion = direccion;
         Telefono = telefono;

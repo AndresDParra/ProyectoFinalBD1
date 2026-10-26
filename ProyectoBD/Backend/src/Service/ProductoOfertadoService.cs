@@ -6,36 +6,26 @@
 
 public class ProveedorService
 {
-    private readonly int _idProveedorAutenticado; // evita que un proveedor pueda realizar operaciones sobre otro proveedor
-
-    private readonly ProveedorDAO _proveedorDAO;
-
+    private readonly AutorizacionService _autorizacionService;
     private readonly ProductoDAO _productoDAO;
 
     private readonly ProductoOfertadoDAO _productoOfertadoDao;
 
     public ProveedorService(
-        int idProveedorAutenticado,
-        ProveedorDAO proveedorDAO,
+        AutorizacionService autorizacionService,
         ProductoDAO productoDAO,
         ProductoOfertadoDAO productoOfertadoDao)
     {
-        if (!proveedorDAO.Existe(idProveedorAutenticado))
-        {
-            throw new KeyNotFoundException($"No existe el proveedor {idProveedorAutenticado}.");
-        }
-
-        _idProveedorAutenticado = idProveedorAutenticado;
-        _proveedorDAO = proveedorDAO;
+        _autorizacionService = autorizacionService;
         _productoDAO = productoDAO;
         _productoOfertadoDao = productoOfertadoDao;
     }
 
     // operaciones sobre los productos ofertados
 
-    public bool CrearProductoOfertado(Producto producto, decimal precio, int tiempoEntrega = 0)
+    public bool CrearProductoOfertado(int idSolicitante, Producto producto, decimal precio, int tiempoEntrega = 0)
     {
-        ArgumentNullException.ThrowIfNull(producto);
+        _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor);
 
         if (!_productoDAO.Existe(producto.IdProducto)) // Verifica que el producto exista
         {
@@ -43,7 +33,7 @@ public class ProveedorService
         }
 
         ProductoOfertado nuevoProductoOfertado = new ProductoOfertado(
-            _idProveedorAutenticado,
+            idSolicitante,
             producto,
             precio,
             tiempoEntrega);
@@ -51,19 +41,23 @@ public class ProveedorService
         return _productoOfertadoDao.Crear(nuevoProductoOfertado);
     }
 
-    public bool EliminarProductoOfertado(int idProducto)
+    public bool EliminarProductoOfertado(int idSolicitante, int idProducto)
     {
+        _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor);
+
         if (!_productoDAO.Existe(idProducto))
         {
             return false;
         }
 
-        return _productoOfertadoDao.Eliminar(_idProveedorAutenticado, idProducto);
+        return _productoOfertadoDao.Eliminar(idSolicitante, idProducto);
     }
 
-    public List<ProductoOfertado> ConsultarProductoOfertadoPorProveedor()
+    public List<ProductoOfertado> ConsultarProductoOfertadoPorProveedor(int idSolicitante)
     {
-        return _productoOfertadoDao.ConsultarIdProveedor(_idProveedorAutenticado);
+        _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor);
+
+        return _productoOfertadoDao.ConsultarIdProveedor(idSolicitante);
     }
 
     public ProductoOfertado ConsultarProducOfertadoPorIdProducto(int idProducto)
@@ -76,13 +70,20 @@ public class ProveedorService
         return _productoOfertadoDao.ConsultarIdProducto(idProducto);
     }
 
-    public bool ActualizarPrecioProductoOfertado(int idProducto, decimal nuevoPrecio)
+    public bool ActualizarPrecioProductoOfertado(int idSolicitante, int idProducto, decimal nuevoPrecio)
     {
+        _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor);
+
+        if (nuevoPrecio < 0)
+        {
+            throw new ArgumentException("El precio no puede ser negativo.");
+        }
+
         if (!_productoDAO.Existe(idProducto))
         {
             throw new KeyNotFoundException($"No existe un producto con el ID {idProducto}.");
         }
 
-        return _productoOfertadoDao.ActualizarPrecio(_idProveedorAutenticado, idProducto, nuevoPrecio);
+        return _productoOfertadoDao.ActualizarPrecio(idSolicitante, idProducto, nuevoPrecio);
     }
 }

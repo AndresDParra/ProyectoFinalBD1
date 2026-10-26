@@ -9,19 +9,6 @@ public class UsuarioDAO : IUsuarioDAO
     /// </summary>
 
     /// <summary>
-    /// Valida que el usuario pueda ser gestionado mediante el CRUD habitual.
-    /// </summary>
-    private static void ValidarUsuarioParaCrud(Usuario usuario)
-    {
-        ArgumentNullException.ThrowIfNull(usuario);
-        usuario.ValidarEstado();
-
-        if (usuario.Rol == RolUsuario.Administrador)
-            throw new OperacionUsuarioNoPermitidaException("El administrador no se gestiona mediante el CRUD habitual.");
-
-    }
-
-    /// <summary>
     /// Obtiene y valida el rol de un usuario bloqueando su fila durante la transaccion.
     /// </summary>
     private static RolUsuario ObtenerRolBloqueado(MySqlConnection conexion, MySqlTransaction transaccion, int idUsuario)
@@ -58,11 +45,38 @@ public class UsuarioDAO : IUsuarioDAO
 
     public Usuario ObtenerUsuarioPorId(int id) { return null; }
 
+    public Usuario ObtenerUsuarioPorNombre(string nombre) { return null; }
 
     public Usuario ObtenerUsuarioPorCedula(string cedula) { return null; }
 
     public Usuario ObtenerUsuarioPorCorreo(string correo) { return null; }
-    public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario) { return null; }
+    public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario)
+    {
+        const string sql = "SELECT idTipoUsuario FROM Usuario WHERE idUsuario = @idUsuario;";
+
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@idUsuario", idUsuario);
+
+            object? resultado = comando.ExecuteScalar();
+            if (resultado is null || resultado == DBNull.Value)
+                return null;
+
+            int valorRol = Convert.ToInt32(resultado);
+            if (!Enum.IsDefined(typeof(RolUsuario), valorRol))
+                throw new RolUsuarioInvalidoException(idUsuario, valorRol);
+
+            return (RolUsuario)valorRol;
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
 
 
     /// <summary>
@@ -70,8 +84,6 @@ public class UsuarioDAO : IUsuarioDAO
     /// </summary>
 
     public List<Usuario> ObtenerUsuarioPorIdTipo(string tipo) { return null; }
-
-    public List<Usuario> ObtenerUsuarioPorNombre(string nombre) { return null; }
 
     /// <summary>
     /// metodos para consultar lista de proveedores apartir de sus diferentes atributos
@@ -86,8 +98,6 @@ public class UsuarioDAO : IUsuarioDAO
 
     public bool CrearUsuario(Usuario usuario)
     {
-        ValidarUsuarioParaCrud(usuario);
-
         const string sqlUsuario = """
             INSERT INTO Usuario
                 (idUsuario, nombre, direccion, telefono, cedula, correo,
@@ -152,8 +162,6 @@ public class UsuarioDAO : IUsuarioDAO
 
     public bool ActualizarUsuario(Usuario usuario)
     {
-        ValidarUsuarioParaCrud(usuario);
-
         const string sqlUsuario = """
             UPDATE Usuario
             SET nombre = @nombre,
@@ -242,6 +250,32 @@ public class UsuarioDAO : IUsuarioDAO
 
             transaccion.Commit();
             return true;
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
+
+    /// metodo para validar la existencia de un usuario en el sistema
+    public bool ExisteUsuario(int id)
+    {
+        const string sql = "SELECT COUNT(*) FROM Usuario WHERE idUsuario = @idUsuario;";
+
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@idUsuario", id);
+
+            // convierte el resultado en un entero y verifica si es mayor a 0, lo que indica que el usuario existe
+
+            object resultado = comando.ExecuteScalar()!;
+            int cantidad = Convert.ToInt32(resultado);
+
+            return cantidad > 0;
         }
         catch (MySqlException exception)
         {
