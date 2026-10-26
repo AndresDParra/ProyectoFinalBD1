@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "DzqDI+jI3fQ=",
+  "dgSpecHash": "OyL7Wkwwt1I=",
   "success": true,
   "projectFilePath": "/home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/ProyectoBD.csproj",
   "expectedPackageFiles": [
+    "/home/mateo/.nuget/packages/bcrypt.net-next/4.2.0/bcrypt.net-next.4.2.0.nupkg.sha512",
     "/home/mateo/.nuget/packages/bouncycastle.cryptography/2.5.1/bouncycastle.cryptography.2.5.1.nupkg.sha512",
     "/home/mateo/.nuget/packages/google.protobuf/3.30.0/google.protobuf.3.30.0.nupkg.sha512",
     "/home/mateo/.nuget/packages/k4os.compression.lz4/1.3.8/k4os.compression.lz4.1.3.8.nupkg.sha512",

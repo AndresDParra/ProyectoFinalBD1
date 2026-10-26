@@ -25,6 +25,11 @@ public class ProveedorService
 
     public bool CrearProductoOfertado(int idSolicitante, Producto producto, decimal precio, int tiempoEntrega = 0)
     {
+        if (producto == null)
+        {
+            throw new ArgumentNullException(nameof(producto), "El producto no puede ser nulo.");
+        }
+
         _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor);
 
         if (!_productoDAO.Existe(producto.IdProducto)) // Verifica que el producto exista

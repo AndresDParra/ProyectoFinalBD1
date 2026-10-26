@@ -20,10 +20,15 @@ public class UsuarioService
     /// metodos para realizar CRUDs completos en el sistema estos solo pueden ser realizados por el administrador
     /// </summary>
 
-    public bool CrearUsuario(Usuario usuario, int idSolicitante)
+    public bool CrearUsuario(Usuario usuario, string contrasena, int idSolicitante)
     {
         // Validar que el solicitante tenga rol de Administrador
         _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Administrador);
+
+        if (usuario == null)
+        {
+            throw new ArgumentNullException(nameof(usuario), "El usuario no puede ser nulo.");
+        }
 
         if (_usuarioDAO.ExisteUsuario(usuario.IdUsuario))
         {
@@ -35,7 +40,11 @@ public class UsuarioService
             throw new UnauthorizedAccessException("No se puede crear un usuario con rol de Administrador");
         }
 
-        return _usuarioDAO.CrearUsuario(usuario);
+        // validar la contraseña antes de crear el usuario y luego se hashea
+        AutenticacionService.ValidarContrasenaNueva(contrasena);
+        string hash = BCrypt.Net.BCrypt.HashPassword(contrasena);
+
+        return _usuarioDAO.CrearUsuario(usuario, hash);
     }
 
     public bool EliminarUsuario(int idUsuario, int idSolicitante)

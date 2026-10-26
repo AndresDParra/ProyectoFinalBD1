@@ -34,8 +34,8 @@ public interface IUsuarioDAO
     ///  metodos para gestionar Usuario
     /// </summary>
 
-    bool CrearUsuario(Usuario usuario);
-    bool ActualizarUsuario(Usuario usuario);
+    bool CrearUsuario(Usuario usuario, string contrasenaHash);
+    void ActualizarContrasena(int id, string contrasenaNuevaHash);
     bool EliminarUsuario(int id);
 
     /// <summary>
@@ -43,4 +43,12 @@ public interface IUsuarioDAO
     /// </summary>
 
     bool ExisteUsuario(int id);
+
+    /// <summary>
+    /// metodos para gestionar las credenciales de un usuario
+    /// </summary>
+
+    bool ActualizarUsuario(Usuario usuario);
+    (Usuario Usuario, string Hash)? ObtenerCredencialesPorCorreo(string correo);
+    string? ObtenerHashPorId(int id);
 }

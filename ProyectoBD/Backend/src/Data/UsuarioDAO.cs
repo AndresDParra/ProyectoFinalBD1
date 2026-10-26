@@ -4,6 +4,11 @@ using System.Reflection;
 using MySql.Data.MySqlClient;
 public class UsuarioDAO : IUsuarioDAO
 {
+    /// <summary>
+    ///  atributos con el propocido de representar una cadena SQL que contiene las columnas de la tabla Usuario 
+    /// que se necesitan para mapear un objeto Usuario, ademas de servir como apoyo para metodos de consultas
+    /// </summary>
+
     private const string ColumnasUsuario = """
         u.idUsuario,
         u.nombre,
@@ -21,6 +26,12 @@ public class UsuarioDAO : IUsuarioDAO
     private const string JoinProveedor = """
         LEFT JOIN Proveedor p ON p.idproveedor = u.idUsuario
         """;
+
+    /// <summary>
+    /// metodos privados que sirven para facilitar la ejecucion de diferentes consultas SQL y mapear los resultados a objetos Usuario.
+    /// se finalidad es evitar escribir multiples veces bloques de codigo repetitivo
+    /// </summary>
+
 
     private static Usuario CrearUsuario(
         int idUsuario,
@@ -59,30 +70,75 @@ public class UsuarioDAO : IUsuarioDAO
             ?? throw new InvalidOperationException("No se pudo crear el usuario desde la base de datos.");
     }
 
+    /// <summary>
+    /// Convierte la fila actual del <see cref="MySqlDataReader"/> en la entidad
+    /// <see cref="Usuario"/> que corresponde a su rol (Administrador, Proveedor o Vendedor).
+    /// Lee las columnas por nombre, no por posición, para que no se rompa si cambia
+    /// el orden de las columnas de la tabla. Las columnas propias del proveedor
+    /// (<c>nombreEmpresa</c> y <c>ciudad</c>) pueden ser NULL en los demás roles.
+    /// No avanza el lector: el método que lo llama debe haber ejecutado <c>Read()</c>.
+    /// </summary>
+
     private static Usuario MapearUsuario(MySqlDataReader lector)
     {
-        int idUsuario = lector.GetInt32("idUsuario");
-        int valorRol = lector.GetInt32("idTipoUsuario");
+        int idUsuario = lector.GetInt32(lector.GetOrdinal("idUsuario"));
+        int valorRol = lector.GetInt32(lector.GetOrdinal("idTipoUsuario"));
 
         if (!Enum.IsDefined(typeof(RolUsuario), valorRol))
             throw new RolUsuarioInvalidoException(idUsuario, valorRol);
 
-        string? nombreEmpresa = lector.IsDBNull(9) ? null : lector.GetString(9);
-        string? ciudad = lector.IsDBNull(10) ? null : lector.GetString(10);
+        // Columnas opcionales: solo tienen valor cuando el rol es Proveedor
+        int posNombreEmpresa = lector.GetOrdinal("nombreEmpresa");
+        int posCiudad = lector.GetOrdinal("ciudad");
+
+        string? nombreEmpresa = lector.IsDBNull(posNombreEmpresa) ? null : lector.GetString(posNombreEmpresa);
+        string? ciudad = lector.IsDBNull(posCiudad) ? null : lector.GetString(posCiudad);
 
         return CrearUsuario(
             idUsuario,
-            lector.GetString("nombre"),
-            lector.GetString("direccion"),
-            lector.GetString("telefono"),
-            lector.GetString("cedula"),
-            lector.GetString("correo"),
-            DateOnly.FromDateTime(lector.GetDateTime("fechaNacimiento")),
-            lector.GetString("genero"),
+            lector.GetString(lector.GetOrdinal("nombre")),
+            lector.GetString(lector.GetOrdinal("direccion")),
+            lector.GetString(lector.GetOrdinal("telefono")),
+            lector.GetString(lector.GetOrdinal("cedula")),
+            lector.GetString(lector.GetOrdinal("correo")),
+            DateOnly.FromDateTime(lector.GetDateTime(lector.GetOrdinal("fechaNacimiento"))),
+            lector.GetString(lector.GetOrdinal("genero")),
             (RolUsuario)valorRol,
             nombreEmpresa,
             ciudad);
     }
+
+    /// <summary>
+    /// este metodo tiene como objetivo ejerutar un SELECT que devuelve varios usuarios y los mapea a una lista de objetos Usuario.
+    /// Se utiliza para consultas que devuelven múltiples resultados, como obtener todos los usuarios de un tipo específico 
+    /// o todos los proveedores de una ciudad determinada.
+    /// </summary>
+
+    private static List<Usuario> ObtenerLista(string sql, Action<MySqlCommand> agregarParametros)
+    {
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+            using var comando = new MySqlCommand(sql, conexion);
+            agregarParametros(comando);
+
+            using var lector = comando.ExecuteReader();
+            var usuarios = new List<Usuario>();
+            while (lector.Read())
+                usuarios.Add(MapearUsuario(lector));
+
+            return usuarios;
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
+
+
+
+
 
     /// <summary>
     /// metodos para consultar usuario apartir de sus diferentes atributos
@@ -205,40 +261,18 @@ public class UsuarioDAO : IUsuarioDAO
         return ObtenerLista(sql, comando => comando.Parameters.AddWithValue("@nombreEmpresa", nombreEmpresa));
     }
 
-    private static List<Usuario> ObtenerLista(string sql, Action<MySqlCommand> agregarParametros)
-    {
-        try
-        {
-            using var conexion = Conexion.Obtener();
-            conexion.Open();
-            using var comando = new MySqlCommand(sql, conexion);
-            agregarParametros(comando);
-
-            using var lector = comando.ExecuteReader();
-            var usuarios = new List<Usuario>();
-            while (lector.Read())
-                usuarios.Add(MapearUsuario(lector));
-
-            return usuarios;
-        }
-        catch (MySqlException exception)
-        {
-            throw new ErrorDeBaseDeDatos(exception);
-        }
-    }
-
     /// <summary>
     ///  metodos para gestionar Usuario
     /// </summary>
 
-    public bool CrearUsuario(Usuario usuario)
+    public bool CrearUsuario(Usuario usuario, string contrasenaHash)
     {
         const string sqlUsuario = """
             INSERT INTO Usuario
-                (idUsuario, nombre, direccion, telefono, cedula, correo,
+                (idUsuario, nombre, contrasena, direccion, telefono, cedula, correo,
                  fechaNacimiento, genero, idTipoUsuario)
             VALUES
-                (@idUsuario, @nombre, @direccion, @telefono, @cedula, @correo,
+                (@idUsuario, @nombre, @contrasena, @direccion, @telefono, @cedula, @correo,
                  @fechaNacimiento, @genero, @idTipoUsuario);
             """;
 
@@ -257,6 +291,7 @@ public class UsuarioDAO : IUsuarioDAO
 
             comandoUsuario.Parameters.AddWithValue("@idUsuario", usuario.IdUsuario);
             comandoUsuario.Parameters.AddWithValue("@nombre", usuario.Nombre);
+            comandoUsuario.Parameters.AddWithValue("@contrasena", contrasenaHash); // se almacena el hash de la contraseña, no la contraseña en texto plano
             comandoUsuario.Parameters.AddWithValue("@direccion", usuario.Direccion);
             comandoUsuario.Parameters.AddWithValue("@telefono", usuario.Telefono);
             comandoUsuario.Parameters.AddWithValue("@cedula", usuario.Cedula);
@@ -407,6 +442,71 @@ public class UsuarioDAO : IUsuarioDAO
         catch (MySqlException exception)
         {
             throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
+
+    /// <summary>
+    /// metodos para gestionar las credenciales de un usuario
+    /// </summary>
+
+    public void ActualizarContrasena(int idUsuario, string nuevoHash)
+    {
+        using var conexion = Conexion.Obtener();
+        using var comando = new MySqlCommand(
+            "UPDATE Usuario SET contrasena = @hash WHERE idUsuario = @id", conexion);
+
+        comando.Parameters.AddWithValue("@hash", nuevoHash);
+        comando.Parameters.AddWithValue("@id", idUsuario);
+        conexion.Open();
+        comando.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Devuelve el usuario y su hash de contraseña en una sola consulta.
+    /// Solo lo usa el login. Devuelve null si el correo no existe.
+    /// </summary>
+    public (Usuario Usuario, string Hash)? ObtenerCredencialesPorCorreo(string correo)
+    {
+        string sql = $"SELECT u.contrasena, {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.correo = @correo;";
+
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@correo", correo);
+
+            using var lector = comando.ExecuteReader();
+            if (!lector.Read()) return null;
+
+            string hash = lector.GetString(lector.GetOrdinal("contrasena"));
+            Usuario usuario = MapearUsuario(lector);
+            return (usuario, hash);
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
+
+    /// <summary>
+    /// Devuelve solo el hash del usuario, o null si no existe.
+    /// </summary>
+    public string? ObtenerHashPorId(int idUsuario)
+    {
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+            using var comando = new MySqlCommand(
+                "SELECT contrasena FROM Usuario WHERE idUsuario = @id", conexion);
+            comando.Parameters.AddWithValue("@id", idUsuario);
+
+            return comando.ExecuteScalar() as string;
+        }
+        catch (MySqlException ex)
+        {
+            throw new ErrorDeBaseDeDatos(ex);
         }
     }
 }

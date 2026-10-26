@@ -296,25 +296,7 @@ Backend/src/
 Las responsabilidades previstas son:
 
 - `Domain`: entidades y reglas propias del negocio; no debe contener SQL.
-- `Infrastructure/Data`: repositorios o DAO y detalles de MySQL.
-- `Application/Services`: casos de uso, validaciones y coordinación entre repositorios.
-- `Api/Controllers`: entrada HTTP y respuestas para el frontend.
-- `Infrastructure/Authentication`: hash de contraseñas, validación de credenciales y tokens.
-- `Infrastructure/Reports`: generación de PDF, Excel o CSV a partir de datos obtenidos por servicios.
-
-La autorización por rol debe estar en servicios y políticas de la API, no dentro de las entidades ni de los DAO. Las contraseñas nunca deben almacenarse en texto plano; deben guardarse como hashes utilizando una solución segura.
-
-## Problemas conocidos y próximos pasos
-
-Para considerar funcional la persistencia completa y habilitar un flujo de aplicación, es necesario resolver como mínimo:
-
-1. Crear en `BDproyecto.sql` las tablas que utilizan `AdministradorDAO`, `VendedorDAO` y `ProductoOfertadoDAO`.
-2. Definir si un producto tiene un único proveedor (`Prproveedor`) o varios proveedores mediante `productoofertado`; actualmente el modelo y el SQL son inconsistentes.
-3. Corregir el alta de productos para suministrar un proveedor válido o modificar el esquema relacional.
-4. Agregar los códigos iniciales de `categoria` y fijar su correspondencia con `CategoriaProducto`.
-5. Completar el mapeo de los datos de `Usuario`, ya que los DAO actuales devuelven varios campos con valores vacíos.
-6. Corregir las actualizaciones que actualmente no modifican información real.
-7. Cambiar la consulta por producto de `ProductoOfertadoDAO` para devolver todas las ofertas cuando existan varios proveedores, si ese es el comportamiento requerido.
-8. Validar en `ProveedorService.CrearProductoOfertado` que el precio inicial sea mayor que cero, igual que en la actualización.
-9. Implementar las consultas de `VendedorService` por proveedor, producto, rango de precios, categoría, nombre y ciudad.
-10. Completar la autorización por rol, las transacciones entre tablas relacionadas y las pruebas automatizadas.
+- `Data`: repositorios o DAO y detalles de MySQL.
+- `Service`: casos de uso, validaciones y coordinación entre repositorios.
+- `Service/Autentificacion`: hash de contraseñas, validación de credenciales.
+- `Service/Report`: generación de PDF a partir de datos obtenidos por servicios.
