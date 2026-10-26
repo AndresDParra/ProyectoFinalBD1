@@ -19,6 +19,9 @@ public class Usuario
         string? ciudad = null
         )
     {
+        if (idUsuario <= 0)
+            throw new ArgumentException("IdUsuario debe ser mayor que cero.", nameof(idUsuario));
+
         if (string.IsNullOrWhiteSpace(nombre))
             throw new ArgumentException("Nombre no puede estar vacío.", nameof(nombre));
         if (string.IsNullOrWhiteSpace(direccion))
@@ -52,12 +55,12 @@ public class Usuario
         (NombreEmpresa, Ciudad) = ValidarDatosEspecificos(rol, nombreEmpresa, ciudad);
     }
 
-    public int IdUsuario { get; private set; }
-    public string Nombre { get; protected set; }
-    public string Direccion { get; protected set; }
-    public string Telefono { get; protected set; }
+    public int IdUsuario { get; }
+    public string Nombre { get; set; }
+    public string Direccion { get; set; }
+    public string Telefono { get; set; }
     public string Cedula { get; }
-    public string Correo { get; protected set; }
+    public string Correo { get; set; }
     public DateOnly FechaNacimiento { get; }
     public string Genero { get; }
 

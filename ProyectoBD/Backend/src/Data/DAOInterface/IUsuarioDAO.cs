@@ -9,14 +9,11 @@ using System.Collections.Generic;
 /// 
 public interface IUsuarioDAO
 {
-
     /// <summary>
     /// metodos para consultar usuario apartir de sus diferentes atributos
     /// </summary>
 
     Usuario ObtenerUsuarioPorId(int id);
-    Usuario ObtenerUsuarioPorNombre(string nombre);
-    Usuario ObtenerUsuarioPorCedula(string cedula);
     Usuario ObtenerUsuarioPorCorreo(string correo);
     RolUsuario? ObtenerRolUsuarioPorId(int id); // se habilita el nulleable con '?' para poder retornar null en caso de que no se encuentre el rol del usuario
 

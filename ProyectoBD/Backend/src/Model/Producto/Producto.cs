@@ -12,6 +12,11 @@ public class Producto
         CategoriaProducto categoria // por ahora es un enum
     )
     {
+        if (idProducto <= 0)
+        {
+            throw new ArgumentException("El ID del producto debe ser un número positivo.", nameof(idProducto));
+        }
+
         if (string.IsNullOrWhiteSpace(nombre))
         {
             throw new ArgumentException("El nombre del producto no puede estar vacío o ser nulo.");
@@ -32,7 +37,7 @@ public class Producto
         Categoria = categoria;
     }
 
-    public int IdProducto { get; private set; }
+    public int IdProducto { get; }
     public string Nombre { get; private set; }
     public string Descripcion { get; private set; }
     public CategoriaProducto Categoria { get; private set; }

@@ -18,6 +18,11 @@ public class ProductoOfertado
         int tiempoEntrega // representa el tiempo de entrega del producto ofrecido por el proveedor (en dias)
     )
     {
+        if (proveedorId <= 0)
+        {
+            throw new ArgumentException("El ID del proveedor debe ser un número positivo.", nameof(proveedorId));
+        }
+
         if (precio <= 0)
         {
             throw new ArgumentException("El precio no puede ser negativo.");

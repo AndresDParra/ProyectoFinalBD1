@@ -77,7 +77,61 @@ public class UsuarioService
     /// <summary>
     /// metodos para realizar consultas a la base de datos, estos pueden ser realizados por cualquier usuario
     /// </summary>
-    
+
     /// metodos que solo retornan un usuario
-    
+
+    public Usuario ObtenerUsuarioPorId(int idUsuario)
+    {
+        return _usuarioDAO.ObtenerUsuarioPorId(idUsuario);
+    }
+
+    public Usuario ObtenerUsuarioPorCorreo(string correo)
+    {
+        if (string.IsNullOrEmpty(correo))
+        {
+            throw new ArgumentException("El correo no puede ser nulo o vacío.", nameof(correo));
+        }
+
+        return _usuarioDAO.ObtenerUsuarioPorCorreo(correo);
+    }
+
+    public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario)
+    {
+        return _usuarioDAO.ObtenerRolUsuarioPorId(idUsuario);
+    }
+
+    /// metodos que retornan listas de usuarios
+
+    public List<Usuario> ObtenerUsuarioPorIdTipo(string tipo)
+    {
+        if (string.IsNullOrEmpty(tipo))
+        {
+            throw new ArgumentException("El tipo de usuario no puede ser nulo o vacío.", nameof(tipo));
+        }
+
+        return _usuarioDAO.ObtenerUsuarioPorIdTipo(tipo);
+    }
+
+    /// metodos que retornan listas de proveedores
+
+    public List<Usuario> ObtenerProveedorPorCiudad(string ciudad)
+    {
+        if (string.IsNullOrEmpty(ciudad))
+        {
+            throw new ArgumentException("La ciudad no puede ser nula o vacía.", nameof(ciudad));
+        }
+
+        return _usuarioDAO.ObtenerProveedorPorCiudad(ciudad);
+    }
+
+    public List<Usuario> ObtenerProveedorPorNombreEmpresa(string nombreEmpresa)
+    {
+        if (string.IsNullOrEmpty(nombreEmpresa))
+        {
+            throw new ArgumentException("El nombre de la empresa no puede ser nulo o vacío.", nameof(nombreEmpresa));
+        }
+
+        return _usuarioDAO.ObtenerProveedorPorNombreEmpresa(nombreEmpresa);
+    }
+
 }

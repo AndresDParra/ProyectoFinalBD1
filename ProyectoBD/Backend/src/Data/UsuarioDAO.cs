@@ -1,55 +1,138 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using MySql.Data.MySqlClient;
 public class UsuarioDAO : IUsuarioDAO
 {
+    private const string ColumnasUsuario = """
+        u.idUsuario,
+        u.nombre,
+        u.direccion,
+        u.telefono,
+        u.cedula,
+        u.correo,
+        u.fechaNacimiento,
+        u.genero,
+        u.idTipoUsuario,
+        p.nombreempresa,
+        p.ciudad
+        """;
 
-    /// <summary>
-    /// metodos auxiliares que facilitan la gestion de usuarios y validan su estado antes de realizar operaciones CRUD
-    /// </summary>
+    private const string JoinProveedor = """
+        LEFT JOIN Proveedor p ON p.idproveedor = u.idUsuario
+        """;
 
-    /// <summary>
-    /// Obtiene y valida el rol de un usuario bloqueando su fila durante la transaccion.
-    /// </summary>
-    private static RolUsuario ObtenerRolBloqueado(MySqlConnection conexion, MySqlTransaction transaccion, int idUsuario)
+    private static Usuario CrearUsuario(
+        int idUsuario,
+        string nombre,
+        string direccion,
+        string telefono,
+        string cedula,
+        string correo,
+        DateOnly fechaNacimiento,
+        string genero,
+        RolUsuario rol,
+        string? nombreEmpresa,
+        string? ciudad)
     {
-        const string sql = "SELECT idTipoUsuario FROM Usuario WHERE idUsuario = @idUsuario FOR UPDATE;";
+        object? usuario = Activator.CreateInstance(
+            typeof(Usuario),
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            args:
+            [
+                idUsuario,
+                nombre,
+                direccion,
+                telefono,
+                cedula,
+                correo,
+                fechaNacimiento,
+                genero,
+                rol,
+                nombreEmpresa,
+                ciudad
+            ],
+            culture: null);
 
-        using var comando = new MySqlCommand(sql, conexion, transaccion);
-        comando.Parameters.AddWithValue("@idUsuario", idUsuario);
+        return usuario as Usuario
+            ?? throw new InvalidOperationException("No se pudo crear el usuario desde la base de datos.");
+    }
 
-        object? resultado = comando.ExecuteScalar();
-        if (resultado is null || resultado == DBNull.Value)
-            throw new UsuarioNoEncontradoException(idUsuario);
+    private static Usuario MapearUsuario(MySqlDataReader lector)
+    {
+        int idUsuario = lector.GetInt32("idUsuario");
+        int valorRol = lector.GetInt32("idTipoUsuario");
 
-        int valorRol = Convert.ToInt32(resultado);
         if (!Enum.IsDefined(typeof(RolUsuario), valorRol))
             throw new RolUsuarioInvalidoException(idUsuario, valorRol);
 
-        return (RolUsuario)valorRol;
-    }
+        string? nombreEmpresa = lector.IsDBNull(9) ? null : lector.GetString(9);
+        string? ciudad = lector.IsDBNull(10) ? null : lector.GetString(10);
 
-    /// <summary>
-    /// Convierte un valor de texto de MySQL en una cadena nullable y elimina sus espacios externos.
-    /// </summary>
-    private static string? LeerTextoNullable(MySqlDataReader reader, string columna)
-    {
-        object valor = reader[columna];
-        return valor == DBNull.Value ? null : ((string)valor).Trim();
+        return CrearUsuario(
+            idUsuario,
+            lector.GetString("nombre"),
+            lector.GetString("direccion"),
+            lector.GetString("telefono"),
+            lector.GetString("cedula"),
+            lector.GetString("correo"),
+            DateOnly.FromDateTime(lector.GetDateTime("fechaNacimiento")),
+            lector.GetString("genero"),
+            (RolUsuario)valorRol,
+            nombreEmpresa,
+            ciudad);
     }
 
     /// <summary>
     /// metodos para consultar usuario apartir de sus diferentes atributos
     /// </summary>
 
+    public Usuario ObtenerUsuarioPorId(int id)
+    {
+        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.idUsuario = @idUsuario;";
 
-    public Usuario ObtenerUsuarioPorId(int id) { return null; }
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@idUsuario", id);
 
-    public Usuario ObtenerUsuarioPorNombre(string nombre) { return null; }
+            using var lector = comando.ExecuteReader();
+            if (!lector.Read())
+                throw new UsuarioNoEncontradoException(id);
 
-    public Usuario ObtenerUsuarioPorCedula(string cedula) { return null; }
+            return MapearUsuario(lector);
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
 
-    public Usuario ObtenerUsuarioPorCorreo(string correo) { return null; }
+    public Usuario ObtenerUsuarioPorCorreo(string correo)
+    {
+        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.correo = @correo;";
+
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@correo", correo);
+
+            using var lector = comando.ExecuteReader();
+            if (!lector.Read())
+                throw new CorreoUsuarioNoEncontradoException(correo);
+
+            return MapearUsuario(lector);
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
     public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario)
     {
         const string sql = "SELECT idTipoUsuario FROM Usuario WHERE idUsuario = @idUsuario;";
@@ -83,14 +166,66 @@ public class UsuarioDAO : IUsuarioDAO
     /// metodos para consultar listas de usuarios apartir de sus diferentes atributos
     /// </summary>
 
-    public List<Usuario> ObtenerUsuarioPorIdTipo(string tipo) { return null; }
+    public List<Usuario> ObtenerUsuarioPorIdTipo(string tipo)
+    {
+        int idTipoUsuario;
+        if (int.TryParse(tipo, out int tipoNumerico))
+        {
+            if (!Enum.IsDefined(typeof(RolUsuario), tipoNumerico))
+                throw new ArgumentException("El tipo de usuario no es válido.", nameof(tipo));
+
+            idTipoUsuario = tipoNumerico;
+        }
+        else if (Enum.TryParse<RolUsuario>(tipo, true, out var rol) && Enum.IsDefined(rol))
+        {
+            idTipoUsuario = (int)rol;
+        }
+        else
+        {
+            throw new ArgumentException("El tipo de usuario no es válido.", nameof(tipo));
+        }
+
+        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.idTipoUsuario = @idTipoUsuario ORDER BY u.idUsuario;";
+        return ObtenerLista(sql, comando => comando.Parameters.AddWithValue("@idTipoUsuario", idTipoUsuario));
+    }
 
     /// <summary>
     /// metodos para consultar lista de proveedores apartir de sus diferentes atributos
     /// </summary>
 
-    public List<Usuario> ObtenerProveedorPorCiudad(string ciudad) { return null; }
-    public List<Usuario> ObtenerProveedorPorNombreEmpresa(string nombreEmpresa) { return null; }
+    public List<Usuario> ObtenerProveedorPorCiudad(string ciudad)
+    {
+        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u INNER JOIN Proveedor p ON p.idproveedor = u.idUsuario WHERE p.ciudad = @ciudad ORDER BY u.idUsuario;";
+        return ObtenerLista(sql, comando => comando.Parameters.AddWithValue("@ciudad", ciudad));
+    }
+
+    public List<Usuario> ObtenerProveedorPorNombreEmpresa(string nombreEmpresa)
+    {
+        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u INNER JOIN Proveedor p ON p.idproveedor = u.idUsuario WHERE p.nombreempresa = @nombreEmpresa ORDER BY u.idUsuario;";
+        return ObtenerLista(sql, comando => comando.Parameters.AddWithValue("@nombreEmpresa", nombreEmpresa));
+    }
+
+    private static List<Usuario> ObtenerLista(string sql, Action<MySqlCommand> agregarParametros)
+    {
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+            using var comando = new MySqlCommand(sql, conexion);
+            agregarParametros(comando);
+
+            using var lector = comando.ExecuteReader();
+            var usuarios = new List<Usuario>();
+            while (lector.Read())
+                usuarios.Add(MapearUsuario(lector));
+
+            return usuarios;
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
 
     /// <summary>
     ///  metodos para gestionar Usuario
@@ -184,10 +319,6 @@ public class UsuarioDAO : IUsuarioDAO
             conexion.Open();
             using var transaccion = conexion.BeginTransaction();
 
-            RolUsuario rolPersistido = ObtenerRolBloqueado(conexion, transaccion, usuario.IdUsuario);
-            if (rolPersistido == RolUsuario.Administrador || rolPersistido != usuario.Rol)
-                throw new OperacionUsuarioNoPermitidaException("No se puede modificar el administrador ni cambiar el rol del usuario mediante este CRUD.");
-
             using var comando = new MySqlCommand(sqlUsuario, conexion, transaccion);
 
             comando.Parameters.AddWithValue("@nombre", usuario.Nombre);
@@ -234,10 +365,6 @@ public class UsuarioDAO : IUsuarioDAO
             using var conexion = Conexion.Obtener();
             conexion.Open();
             using var transaccion = conexion.BeginTransaction();
-
-            RolUsuario rolPersistido = ObtenerRolBloqueado(conexion, transaccion, id);
-            if (rolPersistido == RolUsuario.Administrador)
-                throw new OperacionUsuarioNoPermitidaException("El administrador no puede eliminarse mediante el CRUD habitual.");
 
             using var comando = new MySqlCommand(sql, conexion, transaccion);
             comando.Parameters.AddWithValue("@idUsuario", id);
