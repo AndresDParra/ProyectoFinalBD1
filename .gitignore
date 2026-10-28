@@ -1,0 +1,10 @@
+# Archivos generados por .NET
+**/bin/
+**/obj/
+
+# Archivos de Visual Studio
+.vs/
+
+# Archivos temporales
+*.user
+*.suo

@@ -25,9 +25,24 @@ public static class Conexion
     /// </summary>
     /// <returns>Un objeto MySqlConnection listo para abrir y utilizar.</returns>
     
-    public static MySqlConnection Obtener()
+    public bool ProbarConexion()
     {
-        return new MySqlConnection(cadena);
+        try
+        {
+            using (MySqlConnection conexion = getConexion())
+            {
+                conexion.Open();
+                Console.WriteLine("Conexión exitosa a la base de datos.");
+                return true;
+            }
+        }
+        catch (MySqlException ex)
+    {
+            Console.WriteLine("Error al probar la conexión: " + ex.Message);
+            return false;
+        }
     }
 }
+
+
 
