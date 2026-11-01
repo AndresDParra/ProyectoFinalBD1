@@ -53,16 +53,21 @@ ProyectoFinalBD1/
             ├── Model/                  # Entidades y reglas de dominio
             │   ├── Usuario.cs
             │   ├── RolUsuario.cs
-            │   └── Producto/
-            │       ├── Producto.cs
-            │       ├── ProductoOfertado.cs
-            │       └── CategoriaProducto.cs
+            │   ├── Producto/
+            │   │   ├── Producto.cs
+            │   │   ├── ProductoOfertado.cs
+            │   │   └── CategoriaProducto.cs
+            │   └── Consulta/           # Resultados de las consultas combinadas
+            │       ├── OfertaDetalle.cs
+            │       ├── ResumenCategoria.cs
+            │       └── PortafolioProveedor.cs
             ├── Data/                   # Acceso a MySQL
             │   ├── Conexion.cs
             │   ├── UsuarioDAO.cs
             │   ├── ProductoDAO.cs
             │   ├── ProductoOfertadoDAO.cs
-            │   ├── DAOInterface/       # IUsuarioDAO, IProductoDAO, IProductoOfertadoDAO
+            │   ├── ConsultaDAO.cs      # Consultas con JOIN y subconsultas
+            │   ├── DAOInterface/       # IUsuarioDAO, IProductoDAO, IProductoOfertadoDAO, IConsultaDAO
             │   └── exception/          # Excepciones propias de los DAO
             └── Service/                # Casos de uso y reglas de negocio
                 ├── AutentifiacionService.cs     # clase AutenticacionService
@@ -70,6 +75,7 @@ ProyectoFinalBD1/
                 ├── UsuarioService.cs
                 ├── ProductoService.cs
                 ├── ProductoOfertadoService.cs   # contiene la clase ProveedorService
+                ├── ConsultaService.cs
                 └── exception/          # Excepciones de las reglas de negocio
 ```
 
@@ -129,6 +135,17 @@ Reglas del administrador implementadas en `UsuarioService`:
 - `CrearProductoOfertado`, `EliminarProductoOfertado`, `ActualizarPrecioProductoOfertado` y `ConsultarProductoOfertadoPorProveedor`, todos para el proveedor solicitante.
 - `ConsultarProducOfertadoPorIdProducto`: devuelve la lista de ofertas de un producto (puede haber varios proveedores).
 
+### `ConsultaService`
+Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualquier usuario, sin validación de rol; el DAO es `ConsultaDAO`.
+
+| Método | Tipo | Tablas | Qué devuelve |
+| --- | --- | --- | --- |
+| `ConsultarCatalogoOfertas` | JOIN | `productosofertados`, `producto`, `categoria`, `usuario` | `OfertaDetalle`: oferta con su producto, categoría y proveedor. Filtros opcionales: categoría, ciudad y rango de precio |
+| `ConsultarResumenPorCategoria` | JOIN | `categoria`, `producto`, `productosofertados` | `ResumenCategoria`: productos, ofertas y precio mínimo, máximo y promedio por categoría (incluye las categorías sin ofertas) |
+| `ConsultarPortafolioProveedores` | JOIN | `usuario`, `productosofertados`, `producto` | `PortafolioProveedor`: productos y categorías que ofrece cada proveedor, con precio y entrega promedio (incluye a los que no ofrecen nada) |
+| `ConsultarMejorOfertaPorProducto` | Subconsulta | `productosofertados`, `producto`, `categoria`, `usuario` | `OfertaDetalle`: la oferta de menor precio de cada producto (todas, si hay empate) |
+| `ConsultarProductosSinOferta` | Subconsulta (`NOT EXISTS`) | `producto`, `productosofertados` | `Producto`: los que ningún proveedor ofrece, que son los únicos que se pueden eliminar |
+
 ## Acceso a datos
 
 | DAO | Operaciones |
@@ -136,6 +153,7 @@ Reglas del administrador implementadas en `UsuarioService`:
 | `UsuarioDAO` | Consultar por id, correo, cédula, rol, tipo, ciudad y empresa; crear, actualizar, eliminar, comprobar existencia; leer y actualizar el hash de contraseña |
 | `ProductoDAO` | Crear, consultar por id, actualizar, eliminar y comprobar existencia |
 | `ProductoOfertadoDAO` | Crear (valida proveedor y producto en una transacción), actualizar precio, consultar por proveedor o por producto, comprobar existencia y eliminar |
+| `ConsultaDAO` | Las cinco consultas con JOIN y subconsultas descritas en `ConsultaService`; no pertenecen a una sola entidad, por eso están separadas |
 
 Detalles de implementación:
 - **Categorías:** `categoria.Cacodigo` empieza en 1 y el enum `CategoriaProducto` en 0, por lo que `ProductoDAO` suma 1 al guardar y resta 1 al leer.
@@ -165,15 +183,37 @@ Usa `SslMode=Preferred` y un tiempo de espera de 5 segundos. La cadena se lee un
 
 > El script **borra y recrea** las tablas (`DROP TABLE IF EXISTS`), así que no lo ejecutes sobre datos que quieras conservar.
 
-### Usuarios iniciales (solo para desarrollo)
+### Usuarios para pruebas
 
-| Rol | Correo | Contraseña |
-| --- | --- | --- |
-| Administrador | `s@email.com` | `Admin12345` |
-| Proveedor | `d@email.com` | `Proveedor12345` |
-| Vendedor | `v@email.com` | `Vendedor12345` |
+`BDproyecto.sql` crea tres usuarios con contraseña ya cifrada (hash bcrypt), uno por rol. Sirven para probar el login y los permisos de cada rol sin crear usuarios a mano.
 
-Los hashes están versionados en el script, así que cualquiera con acceso al repositorio puede deducir estas contraseñas. **Deben cambiarse** en cualquier entorno real.
+| Id | Nombre | Rol | Correo | Contraseña | Cédula | Empresa / ciudad |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `admin` | Administrador | `s@email.com` | `Admin12345` | `12345` | no aplica |
+| 2 | `porvee` | Proveedor | `d@email.com` | `Proveedor12345` | `2345` | `exito` / `armenia` |
+| 3 | `vendedor` | Vendedor | `v@email.com` | `Vendedor12345` | `3456` | no aplica |
+
+Qué se puede probar con cada uno:
+
+| Usuario | Pruebas útiles |
+| --- | --- |
+| Administrador (`s@email.com`) | Crear, actualizar y eliminar usuarios; crear y eliminar productos. No puede crear otro administrador ni modificar o eliminar al existente |
+| Proveedor (`d@email.com`) | Crear y eliminar productos; crear, consultar, actualizar el precio y eliminar sus productos ofertados. No puede crear usuarios |
+| Vendedor (`v@email.com`) | Solo consultas. Las operaciones de escritura deben fallar con `UnauthorizedAccessException` |
+
+Ejemplo de login desde código:
+
+```csharp
+var autenticacion = new AutenticacionService(new UsuarioDAO());
+Usuario admin = autenticacion.Login("s@email.com", "Admin12345");
+```
+
+Notas:
+
+- En la base solo se guarda el hash de cada contraseña, nunca el texto. Las contraseñas de esta tabla son las que se usaron para generar esos hashes.
+- El administrador y el vendedor tienen valores en `nombreempresa` y `ciudad` dentro de la tabla, pero el sistema los ignora porque solo se usan con el rol Proveedor.
+- Volver a ejecutar `BDproyecto.sql` borra y recrea las tablas, así que los usuarios que se hayan creado después se pierden y estos tres vuelven a su estado inicial.
+- Los hashes están versionados en el script, así que cualquiera con acceso al repositorio puede deducir estas contraseñas. **Deben cambiarse** en cualquier entorno real.
 
 ## Requisitos
 
@@ -235,11 +275,12 @@ Funcionalidades que el enunciado pide y todavía no están (o no están completa
 2. **Sesión y cierre de sesión.** `AutenticacionService.Login` devuelve el usuario, pero no hay sesión ni `Logout`. Lo necesita la bitácora.
 3. **Gestión de categorías.** Existe la tabla y el enum, pero no hay modelo, DAO ni servicio para crear, consultar, actualizar o eliminar categorías y sus datos básicos.
 4. **Actualizar productos.** `ProductoService` no tiene operación de actualización; `ProductoDAO.Actualizar` existe pero ningún servicio la expone.
-5. **Consultas para el usuario esporádico.** Faltan búsquedas de productos por categoría, nombre y rango de precio, y de ofertas por proveedor o ciudad.
+5. **Más búsquedas para el usuario esporádico.** `ConsultaService` ya filtra ofertas por categoría, ciudad y rango de precio; falta buscar productos por nombre.
 6. **Proveedores de cualquier ciudad de Colombia.** La ciudad es texto libre, sin validación ni catálogo de ciudades.
 7. **Un solo administrador a nivel de base de datos.** Hoy solo lo impide el servicio; la tabla no lo garantiza.
 8. **`productosofertados` sin llave primaria** `(proveedorid, producto)`: la base permite ofertas repetidas.
 9. **Interfaz de usuario.** Menú de consola o API web con login, y un `Program.cs` que arme los servicios.
 10. **Pruebas automatizadas** (ver la sección anterior).
+11. **Mostrar los resultados de las consultas.** Los métodos devuelven los datos, pero no hay menú ni pantalla que los muestre. Además, `productosofertados` no trae datos iniciales, así que las consultas devuelven vacío hasta que se carguen ofertas.
 
 Mejoras técnicas que se dejaron anotadas: longitudes de columna cortas sin validar en el modelo (`correo` 25, `telefono` 10, `nombreempresa` 20), manejo de errores de MySQL solo en `UsuarioDAO`, y renombrar `ProveedorService` y `AutenticacionService` para que coincidan con sus archivos.
