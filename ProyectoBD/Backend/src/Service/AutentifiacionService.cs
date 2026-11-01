@@ -7,13 +7,13 @@ using BCrypt.Net;
 /// </summary>
 public class AutenticacionService
 {
-    private readonly UsuarioDAO _usuarioDao;
+    private readonly IUsuarioDAO _usuarioDao;
 
     // Hash falso para gastar el mismo tiempo cuando el correo no existe
     private static readonly string HashFalso =
         BCrypt.Net.BCrypt.HashPassword("contrasena-falsa-para-igualar-tiempos");
 
-    public AutenticacionService(UsuarioDAO usuarioDao)
+    public AutenticacionService(IUsuarioDAO usuarioDao)
     {
         _usuarioDao = usuarioDao;
     }

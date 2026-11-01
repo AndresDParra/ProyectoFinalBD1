@@ -10,12 +10,20 @@ using MySql.Data.MySqlClient;
 
 public class ProductoDAO : IProductoDAO
 {
+    /// <summary>
+    /// La tabla categoria numera sus códigos desde 1 (Cacodigo), mientras que el enum
+    /// CategoriaProducto empieza en 0, por eso se suma o resta 1 al guardar o leer.
+    /// </summary>
+    internal static int CategoriaACodigo(CategoriaProducto categoria) => (int)categoria + 1;
+
+    internal static CategoriaProducto CodigoACategoria(int codigo) => (CategoriaProducto)(codigo - 1);
+
     public bool Crear(Producto producto)
     {
         ArgumentNullException.ThrowIfNull(producto);
 
         const string sql = """
-            INSERT INTO producto (Prid, Prnombre, Prdecripcion, Prcategoria)
+            INSERT INTO producto (Prid, nombre, descripcion, categoria)
             VALUES (@idProducto, @nombre, @descripcion, @categoria);
             """;
 
@@ -28,7 +36,7 @@ public class ProductoDAO : IProductoDAO
         ///<summary>
         /// Se convierte el valor del enum CategoriaProducto a su representación entera para almacenarlo en la base de datos.
         /// </summary>
-        comando.Parameters.AddWithValue("@categoria", (int)producto.Categoria);
+        comando.Parameters.AddWithValue("@categoria", CategoriaACodigo(producto.Categoria));
 
         conexion.Open();
         return comando.ExecuteNonQuery() == 1;
@@ -37,7 +45,7 @@ public class ProductoDAO : IProductoDAO
     public Producto ConsultarId(int idProducto)
     {
         const string sql = """
-            SELECT Prid, Prnombre, Prdecripcion, Prcategoria
+            SELECT Prid, nombre, descripcion, categoria
             FROM producto
             WHERE Prid = @idProducto;
             """;
@@ -56,9 +64,9 @@ public class ProductoDAO : IProductoDAO
 
         return new Producto(
             lector.GetInt32("Prid"),
-            lector.GetString("Prnombre"),
-            lector.GetString("Prdecripcion"),
-            (CategoriaProducto)lector.GetInt32("Prcategoria"));
+            lector.GetString("nombre"),
+            lector.GetString("descripcion"),
+            CodigoACategoria(lector.GetInt32("categoria")));
     }
 
     public bool Actualizar(Producto producto)
@@ -67,9 +75,9 @@ public class ProductoDAO : IProductoDAO
 
         const string sql = """
             UPDATE producto
-            SET Prnombre = @nombre,
-                Prdecripcion = @descripcion,
-                Prcategoria = @categoria
+            SET nombre = @nombre,
+                descripcion = @descripcion,
+                categoria = @categoria
             WHERE Prid = @idProducto;
             """;
 
@@ -79,7 +87,7 @@ public class ProductoDAO : IProductoDAO
         comando.Parameters.AddWithValue("@idProducto", producto.IdProducto);
         comando.Parameters.AddWithValue("@nombre", producto.Nombre);
         comando.Parameters.AddWithValue("@descripcion", producto.Descripcion);
-        comando.Parameters.AddWithValue("@categoria", (int)producto.Categoria);
+        comando.Parameters.AddWithValue("@categoria", CategoriaACodigo(producto.Categoria));
 
         conexion.Open();
         return comando.ExecuteNonQuery() == 1;

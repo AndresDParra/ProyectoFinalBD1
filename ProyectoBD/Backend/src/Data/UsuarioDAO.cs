@@ -10,21 +10,17 @@ public class UsuarioDAO : IUsuarioDAO
     /// </summary>
 
     private const string ColumnasUsuario = """
-        u.idUsuario,
+        u.idusuario,
         u.nombre,
         u.direccion,
         u.telefono,
         u.cedula,
         u.correo,
-        u.fechaNacimiento,
+        u.fechanacimiento,
         u.genero,
-        u.idTipoUsuario,
-        p.nombreempresa,
-        p.ciudad
-        """;
-
-    private const string JoinProveedor = """
-        LEFT JOIN Proveedor p ON p.idproveedor = u.idUsuario
+        u.rolusuario,
+        u.nombreempresa,
+        u.ciudad
         """;
 
     /// <summary>
@@ -81,18 +77,23 @@ public class UsuarioDAO : IUsuarioDAO
 
     private static Usuario MapearUsuario(MySqlDataReader lector)
     {
-        int idUsuario = lector.GetInt32(lector.GetOrdinal("idUsuario"));
-        int valorRol = lector.GetInt32(lector.GetOrdinal("idTipoUsuario"));
+        int idUsuario = lector.GetInt32(lector.GetOrdinal("idusuario"));
+        int valorRol = lector.GetInt32(lector.GetOrdinal("rolusuario"));
 
         if (!Enum.IsDefined(typeof(RolUsuario), valorRol))
             throw new RolUsuarioInvalidoException(idUsuario, valorRol);
 
-        // Columnas opcionales: solo tienen valor cuando el rol es Proveedor
-        int posNombreEmpresa = lector.GetOrdinal("nombreEmpresa");
-        int posCiudad = lector.GetOrdinal("ciudad");
-
-        string? nombreEmpresa = lector.IsDBNull(posNombreEmpresa) ? null : lector.GetString(posNombreEmpresa);
-        string? ciudad = lector.IsDBNull(posCiudad) ? null : lector.GetString(posCiudad);
+        // Columnas opcionales: solo se usan cuando el rol es Proveedor. Para los demás roles
+        // se ignoran aunque la fila las tenga llenas, porque Usuario no las admite.
+        string? nombreEmpresa = null;
+        string? ciudad = null;
+        if (valorRol == (int)RolUsuario.Proveedor)
+        {
+            int posNombreEmpresa = lector.GetOrdinal("nombreempresa");
+            int posCiudad = lector.GetOrdinal("ciudad");
+            nombreEmpresa = lector.IsDBNull(posNombreEmpresa) ? null : lector.GetString(posNombreEmpresa);
+            ciudad = lector.IsDBNull(posCiudad) ? null : lector.GetString(posCiudad);
+        }
 
         return CrearUsuario(
             idUsuario,
@@ -101,7 +102,7 @@ public class UsuarioDAO : IUsuarioDAO
             lector.GetString(lector.GetOrdinal("telefono")),
             lector.GetString(lector.GetOrdinal("cedula")),
             lector.GetString(lector.GetOrdinal("correo")),
-            DateOnly.FromDateTime(lector.GetDateTime(lector.GetOrdinal("fechaNacimiento"))),
+            DateOnly.FromDateTime(lector.GetDateTime(lector.GetOrdinal("fechanacimiento"))),
             lector.GetString(lector.GetOrdinal("genero")),
             (RolUsuario)valorRol,
             nombreEmpresa,
@@ -146,7 +147,7 @@ public class UsuarioDAO : IUsuarioDAO
 
     public Usuario ObtenerUsuarioPorId(int id)
     {
-        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.idUsuario = @idUsuario;";
+        const string sql = $"SELECT {ColumnasUsuario} FROM usuario u WHERE u.idusuario = @idUsuario;";
 
         try
         {
@@ -169,7 +170,7 @@ public class UsuarioDAO : IUsuarioDAO
 
     public Usuario ObtenerUsuarioPorCorreo(string correo)
     {
-        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.correo = @correo;";
+        const string sql = $"SELECT {ColumnasUsuario} FROM usuario u WHERE u.correo = @correo;";
 
         try
         {
@@ -191,7 +192,7 @@ public class UsuarioDAO : IUsuarioDAO
     }
     public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario)
     {
-        const string sql = "SELECT idTipoUsuario FROM Usuario WHERE idUsuario = @idUsuario;";
+        const string sql = "SELECT rolusuario FROM usuario WHERE idusuario = @idUsuario;";
 
         try
         {
@@ -241,7 +242,7 @@ public class UsuarioDAO : IUsuarioDAO
             throw new ArgumentException("El tipo de usuario no es válido.", nameof(tipo));
         }
 
-        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.idTipoUsuario = @idTipoUsuario ORDER BY u.idUsuario;";
+        const string sql = $"SELECT {ColumnasUsuario} FROM usuario u WHERE u.rolusuario = @idTipoUsuario ORDER BY u.idusuario;";
         return ObtenerLista(sql, comando => comando.Parameters.AddWithValue("@idTipoUsuario", idTipoUsuario));
     }
 
@@ -251,13 +252,13 @@ public class UsuarioDAO : IUsuarioDAO
 
     public List<Usuario> ObtenerProveedorPorCiudad(string ciudad)
     {
-        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u INNER JOIN Proveedor p ON p.idproveedor = u.idUsuario WHERE p.ciudad = @ciudad ORDER BY u.idUsuario;";
+        string sql = $"SELECT {ColumnasUsuario} FROM usuario u WHERE u.rolusuario = {(int)RolUsuario.Proveedor} AND u.ciudad = @ciudad ORDER BY u.idusuario;";
         return ObtenerLista(sql, comando => comando.Parameters.AddWithValue("@ciudad", ciudad));
     }
 
     public List<Usuario> ObtenerProveedorPorNombreEmpresa(string nombreEmpresa)
     {
-        const string sql = $"SELECT {ColumnasUsuario} FROM Usuario u INNER JOIN Proveedor p ON p.idproveedor = u.idUsuario WHERE p.nombreempresa = @nombreEmpresa ORDER BY u.idUsuario;";
+        string sql = $"SELECT {ColumnasUsuario} FROM usuario u WHERE u.rolusuario = {(int)RolUsuario.Proveedor} AND u.nombreempresa = @nombreEmpresa ORDER BY u.idusuario;";
         return ObtenerLista(sql, comando => comando.Parameters.AddWithValue("@nombreEmpresa", nombreEmpresa));
     }
 
@@ -267,62 +268,36 @@ public class UsuarioDAO : IUsuarioDAO
 
     public bool CrearUsuario(Usuario usuario, string contrasenaHash)
     {
-        const string sqlUsuario = """
-            INSERT INTO Usuario
-                (idUsuario, nombre, contrasena, direccion, telefono, cedula, correo,
-                 fechaNacimiento, genero, idTipoUsuario)
+        // nombreempresa y ciudad viven en la tabla usuario; son NULL salvo para los proveedores
+        const string sql = """
+            INSERT INTO usuario
+                (idusuario, nombre, contrasena, direccion, telefono, cedula, correo,
+                 fechanacimiento, genero, rolusuario, nombreempresa, ciudad)
             VALUES
                 (@idUsuario, @nombre, @contrasena, @direccion, @telefono, @cedula, @correo,
-                 @fechaNacimiento, @genero, @idTipoUsuario);
-            """;
-
-        const string sqlProveedor = """
-            INSERT INTO Proveedor (idproveedor, nombreempresa, ciudad)
-            VALUES (@idProveedor, @nombreEmpresa, @ciudad);
+                 @fechaNacimiento, @genero, @idTipoUsuario, @nombreEmpresa, @ciudad);
             """;
 
         try
         {
             using var conexion = Conexion.Obtener();
             conexion.Open();
+            using var comando = new MySqlCommand(sql, conexion);
 
-            using var transaccion = conexion.BeginTransaction();
-            using var comandoUsuario = new MySqlCommand(sqlUsuario, conexion, transaccion);
+            comando.Parameters.AddWithValue("@idUsuario", usuario.IdUsuario);
+            comando.Parameters.AddWithValue("@nombre", usuario.Nombre);
+            comando.Parameters.AddWithValue("@contrasena", contrasenaHash); // se almacena el hash de la contraseña, no la contraseña en texto plano
+            comando.Parameters.AddWithValue("@direccion", usuario.Direccion);
+            comando.Parameters.AddWithValue("@telefono", usuario.Telefono);
+            comando.Parameters.AddWithValue("@cedula", usuario.Cedula);
+            comando.Parameters.AddWithValue("@correo", usuario.Correo);
+            comando.Parameters.AddWithValue("@fechaNacimiento", usuario.FechaNacimiento.ToDateTime(TimeOnly.MinValue));
+            comando.Parameters.AddWithValue("@genero", usuario.Genero);
+            comando.Parameters.AddWithValue("@idTipoUsuario", usuario.IdTipoUsuario);
+            comando.Parameters.AddWithValue("@nombreEmpresa", (object?)usuario.NombreEmpresa ?? DBNull.Value);
+            comando.Parameters.AddWithValue("@ciudad", (object?)usuario.Ciudad ?? DBNull.Value);
 
-            comandoUsuario.Parameters.AddWithValue("@idUsuario", usuario.IdUsuario);
-            comandoUsuario.Parameters.AddWithValue("@nombre", usuario.Nombre);
-            comandoUsuario.Parameters.AddWithValue("@contrasena", contrasenaHash); // se almacena el hash de la contraseña, no la contraseña en texto plano
-            comandoUsuario.Parameters.AddWithValue("@direccion", usuario.Direccion);
-            comandoUsuario.Parameters.AddWithValue("@telefono", usuario.Telefono);
-            comandoUsuario.Parameters.AddWithValue("@cedula", usuario.Cedula);
-            comandoUsuario.Parameters.AddWithValue("@correo", usuario.Correo);
-            comandoUsuario.Parameters.AddWithValue("@fechaNacimiento", usuario.FechaNacimiento.ToDateTime(TimeOnly.MinValue));
-            comandoUsuario.Parameters.AddWithValue("@genero", usuario.Genero);
-            comandoUsuario.Parameters.AddWithValue("@idTipoUsuario", usuario.IdTipoUsuario);
-
-            if (comandoUsuario.ExecuteNonQuery() != 1)
-            {
-                transaccion.Rollback();
-                return false;
-            }
-
-            /// verifica si el usuario es proveedor agrega los valores especificos del proveedor a la tabla usuario
-            if (usuario.Rol == RolUsuario.Proveedor)
-            {
-                using var comandoProveedor = new MySqlCommand(sqlProveedor, conexion, transaccion);
-                comandoProveedor.Parameters.AddWithValue("@idProveedor", usuario.IdUsuario);
-                comandoProveedor.Parameters.AddWithValue("@nombreEmpresa", usuario.NombreEmpresa);
-                comandoProveedor.Parameters.AddWithValue("@ciudad", usuario.Ciudad);
-
-                if (comandoProveedor.ExecuteNonQuery() != 1)
-                {
-                    transaccion.Rollback();
-                    return false;
-                }
-            }
-
-            transaccion.Commit();
-            return true;
+            return comando.ExecuteNonQuery() == 1;
         }
         catch (MySqlException exception)
         {
@@ -332,29 +307,32 @@ public class UsuarioDAO : IUsuarioDAO
 
     public bool ActualizarUsuario(Usuario usuario)
     {
-        const string sqlUsuario = """
-            UPDATE Usuario
-            SET nombre = @nombre,
-                direccion = @direccion,
-                telefono = @telefono,
-                correo = @correo
-            WHERE idUsuario = @idUsuario;
-            """;
-
-        const string sqlProveedor = """
-            UPDATE Proveedor
-            SET nombreempresa = @nombreEmpresa,
-                ciudad = @ciudad
-            WHERE idproveedor = @idProveedor;
-            """;
+        // empresa y ciudad solo se modifican para proveedores; en los demás roles se conservan tal cual
+        string sql = usuario.Rol == RolUsuario.Proveedor
+            ? """
+              UPDATE usuario
+              SET nombre = @nombre,
+                  direccion = @direccion,
+                  telefono = @telefono,
+                  correo = @correo,
+                  nombreempresa = @nombreEmpresa,
+                  ciudad = @ciudad
+              WHERE idusuario = @idUsuario;
+              """
+            : """
+              UPDATE usuario
+              SET nombre = @nombre,
+                  direccion = @direccion,
+                  telefono = @telefono,
+                  correo = @correo
+              WHERE idusuario = @idUsuario;
+              """;
 
         try
         {
             using var conexion = Conexion.Obtener();
             conexion.Open();
-            using var transaccion = conexion.BeginTransaction();
-
-            using var comando = new MySqlCommand(sqlUsuario, conexion, transaccion);
+            using var comando = new MySqlCommand(sql, conexion);
 
             comando.Parameters.AddWithValue("@nombre", usuario.Nombre);
             comando.Parameters.AddWithValue("@direccion", usuario.Direccion);
@@ -362,28 +340,13 @@ public class UsuarioDAO : IUsuarioDAO
             comando.Parameters.AddWithValue("@correo", usuario.Correo);
             comando.Parameters.AddWithValue("@idUsuario", usuario.IdUsuario);
 
-            if (comando.ExecuteNonQuery() != 1)
-            {
-                transaccion.Rollback();
-                return false;
-            }
-
             if (usuario.Rol == RolUsuario.Proveedor)
             {
-                using var comandoProveedor = new MySqlCommand(sqlProveedor, conexion, transaccion);
-                comandoProveedor.Parameters.AddWithValue("@nombreEmpresa", usuario.NombreEmpresa);
-                comandoProveedor.Parameters.AddWithValue("@ciudad", usuario.Ciudad);
-                comandoProveedor.Parameters.AddWithValue("@idProveedor", usuario.IdUsuario);
-
-                if (comandoProveedor.ExecuteNonQuery() != 1)
-                {
-                    transaccion.Rollback();
-                    return false;
-                }
+                comando.Parameters.AddWithValue("@nombreEmpresa", usuario.NombreEmpresa);
+                comando.Parameters.AddWithValue("@ciudad", usuario.Ciudad);
             }
 
-            transaccion.Commit();
-            return true;
+            return comando.ExecuteNonQuery() == 1;
         }
         catch (MySqlException exception)
         {
@@ -393,7 +356,7 @@ public class UsuarioDAO : IUsuarioDAO
 
     public bool EliminarUsuario(int id)
     {
-        const string sql = "DELETE FROM Usuario WHERE idUsuario = @idUsuario;";
+        const string sql = "DELETE FROM usuario WHERE idusuario = @idUsuario;";
 
         try
         {
@@ -422,7 +385,7 @@ public class UsuarioDAO : IUsuarioDAO
     /// metodo para validar la existencia de un usuario en el sistema
     public bool ExisteUsuario(int id)
     {
-        const string sql = "SELECT COUNT(*) FROM Usuario WHERE idUsuario = @idUsuario;";
+        const string sql = "SELECT COUNT(*) FROM usuario WHERE idusuario = @idUsuario;";
 
         try
         {
@@ -453,7 +416,7 @@ public class UsuarioDAO : IUsuarioDAO
     {
         using var conexion = Conexion.Obtener();
         using var comando = new MySqlCommand(
-            "UPDATE Usuario SET contrasena = @hash WHERE idUsuario = @id", conexion);
+            "UPDATE usuario SET contrasena = @hash WHERE idusuario = @id", conexion);
 
         comando.Parameters.AddWithValue("@hash", nuevoHash);
         comando.Parameters.AddWithValue("@id", idUsuario);
@@ -467,7 +430,7 @@ public class UsuarioDAO : IUsuarioDAO
     /// </summary>
     public (Usuario Usuario, string Hash)? ObtenerCredencialesPorCorreo(string correo)
     {
-        string sql = $"SELECT u.contrasena, {ColumnasUsuario} FROM Usuario u {JoinProveedor} WHERE u.correo = @correo;";
+        string sql = $"SELECT u.contrasena, {ColumnasUsuario} FROM usuario u WHERE u.correo = @correo;";
 
         try
         {
@@ -479,7 +442,11 @@ public class UsuarioDAO : IUsuarioDAO
             using var lector = comando.ExecuteReader();
             if (!lector.Read()) return null;
 
-            string hash = lector.GetString(lector.GetOrdinal("contrasena"));
+            // un usuario sin contraseña registrada (columna NULL) no puede iniciar sesión
+            int posHash = lector.GetOrdinal("contrasena");
+            if (lector.IsDBNull(posHash)) return null;
+
+            string hash = lector.GetString(posHash);
             Usuario usuario = MapearUsuario(lector);
             return (usuario, hash);
         }
@@ -499,7 +466,7 @@ public class UsuarioDAO : IUsuarioDAO
             using var conexion = Conexion.Obtener();
             conexion.Open();
             using var comando = new MySqlCommand(
-                "SELECT contrasena FROM Usuario WHERE idUsuario = @id", conexion);
+                "SELECT contrasena FROM usuario WHERE idusuario = @id", conexion);
             comando.Parameters.AddWithValue("@id", idUsuario);
 
             return comando.ExecuteScalar() as string;

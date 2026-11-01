@@ -8,9 +8,9 @@
 public class UsuarioService
 {
     private readonly AutorizacionService _autorizacionService;
-    private readonly UsuarioDAO _usuarioDAO;
+    private readonly IUsuarioDAO _usuarioDAO;
 
-    public UsuarioService(AutorizacionService autorizacionService, UsuarioDAO usuarioDAO)
+    public UsuarioService(AutorizacionService autorizacionService, IUsuarioDAO usuarioDAO)
     {
         _autorizacionService = autorizacionService;
         _usuarioDAO = usuarioDAO;

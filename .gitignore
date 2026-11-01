@@ -1,0 +1,28 @@
+# Salida de compilación
+bin/
+obj/
+
+# Resultados de pruebas y cobertura
+TestResults/
+coverage*.xml
+*.trx
+
+# IDEs y editores
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+
+# Secretos y configuración local
+.env
+appsettings.Development.json
+appsettings.Local.json
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

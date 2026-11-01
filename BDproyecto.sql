@@ -87,6 +87,7 @@ CREATE TABLE `usuario` (
   `rolusuario` int NOT NULL,
   `nombreempresa` varchar(20) DEFAULT NULL,
   `ciudad` varchar(30) DEFAULT NULL,
+  `contrasena` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`idusuario`),
   KEY `idrol_idx` (`rolusuario`),
   CONSTRAINT `idrol`
@@ -99,7 +100,9 @@ COLLATE=utf8mb4_0900_ai_ci;
 
 -- Datos de usuario
 
-INSERT INTO `usuario` VALUES
+INSERT INTO `usuario`
+(`idusuario`, `nombre`, `direccion`, `telefono`, `cedula`, `correo`,
+ `fechanacimiento`, `genero`, `rolusuario`, `nombreempresa`, `ciudad`) VALUES
 (1, 'admin', 'casa', '3124253567', '12345',
  's@email.com', '1970-09-12', 'M', 1, 'cocacola', 'circasia'),
 (2, 'porvee', 'apartamento', '314567890', '2345',

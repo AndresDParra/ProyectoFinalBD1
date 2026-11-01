@@ -46,12 +46,13 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
     {
         const string sql = """
             SELECT
-                EXISTS (SELECT 1 FROM proveedor WHERE idproveedor = @idProveedor),
+                EXISTS (SELECT 1 FROM usuario WHERE idusuario = @idProveedor AND rolusuario = @rolProveedor),
                 EXISTS (SELECT 1 FROM producto WHERE Prid = @idProducto);
             """;
 
         using var comando = new MySqlCommand(sql, conexion, transaccion);
         comando.Parameters.AddWithValue("@idProveedor", idProveedor);
+        comando.Parameters.AddWithValue("@rolProveedor", (int)RolUsuario.Proveedor);
         comando.Parameters.AddWithValue("@idProducto", idProducto);
 
         using var lector = comando.ExecuteReader();
@@ -71,9 +72,9 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
     {
         return new Producto(
             lector.GetInt32("Prid"),
-            lector.GetString("Prnombre"),
-            lector.GetString("Prdecripcion"),
-            (CategoriaProducto)lector.GetInt32("Prcategoria"));
+            lector.GetString("nombre"),
+            lector.GetString("descripcion"),
+            ProductoDAO.CodigoACategoria(lector.GetInt32("categoria")));
     }
 
     /// <summary>
@@ -167,9 +168,9 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
                    po.precio,
                    po.tiempoentrega,
                    p.Prid,
-                   p.Prnombre,
-                   p.Prdecripcion,
-                   p.Prcategoria
+                   p.nombre,
+                   p.descripcion,
+                   p.categoria
             FROM productosofertados po
             INNER JOIN producto p ON p.Prid = po.producto
             WHERE po.proveedorid = @idProveedor
@@ -206,9 +207,9 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
                    po.precio,
                    po.tiempoentrega,
                    p.Prid,
-                   p.Prnombre,
-                   p.Prdecripcion,
-                   p.Prcategoria
+                   p.nombre,
+                   p.descripcion,
+                   p.categoria
             FROM productosofertados po
             INNER JOIN producto p ON p.Prid = po.producto
             WHERE po.producto = @idProducto

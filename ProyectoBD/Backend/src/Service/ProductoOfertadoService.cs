@@ -7,14 +7,14 @@
 public class ProveedorService
 {
     private readonly AutorizacionService _autorizacionService;
-    private readonly ProductoDAO _productoDAO;
+    private readonly IProductoDAO _productoDAO;
 
-    private readonly ProductoOfertadoDAO _productoOfertadoDao;
+    private readonly IProductoOfertadoDAO _productoOfertadoDao;
 
     public ProveedorService(
         AutorizacionService autorizacionService,
-        ProductoDAO productoDAO,
-        ProductoOfertadoDAO productoOfertadoDao)
+        IProductoDAO productoDAO,
+        IProductoOfertadoDAO productoOfertadoDao)
     {
         _autorizacionService = autorizacionService;
         _productoDAO = productoDAO;
