@@ -14,6 +14,6 @@ public interface IProductoOfertadoDAO
     bool ExistePorProducto(int idProducto);
 
     List<ProductoOfertado> ConsultarIdProveedor(int idProveedor);
-    ProductoOfertado ConsultarIdProducto(int idProducto);
+    List<ProductoOfertado> ConsultarIdProducto(int idProducto);
     bool Eliminar(int idProveedor, int idProducto);
 }

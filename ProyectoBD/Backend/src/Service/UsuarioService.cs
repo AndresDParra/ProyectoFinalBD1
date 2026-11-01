@@ -35,6 +35,16 @@ public class UsuarioService
             return false; // El usuario ya existe
         }
 
+        if (ExisteCorreo(usuario.Correo))
+        {
+            throw new CorreoUsuarioDuplicadoException(usuario.Correo);
+        }
+
+        if (ExisteCedula(usuario.Cedula))
+        {
+            throw new CedulaUsuarioDuplicadaException(usuario.Cedula);
+        }
+
         if (usuario.Rol == RolUsuario.Administrador)
         {
             throw new UnauthorizedAccessException("No se puede crear un usuario con rol de Administrador");
@@ -45,6 +55,36 @@ public class UsuarioService
         string hash = BCrypt.Net.BCrypt.HashPassword(contrasena);
 
         return _usuarioDAO.CrearUsuario(usuario, hash);
+    }
+
+    /// <summary>
+    /// Indican si ya hay un usuario con ese correo o cédula, usando las consultas del DAO
+    /// (que lanzan una excepción cuando no encuentran el usuario).
+    /// </summary>
+    private bool ExisteCorreo(string correo)
+    {
+        try
+        {
+            _usuarioDAO.ObtenerUsuarioPorCorreo(correo);
+            return true;
+        }
+        catch (CorreoUsuarioNoEncontradoException)
+        {
+            return false;
+        }
+    }
+
+    private bool ExisteCedula(string cedula)
+    {
+        try
+        {
+            _usuarioDAO.ObtenerUsuarioPorCedula(cedula);
+            return true;
+        }
+        catch (CedulaUsuarioNoEncontradaException)
+        {
+            return false;
+        }
     }
 
     public bool EliminarUsuario(int idUsuario, int idSolicitante)
@@ -91,6 +131,11 @@ public class UsuarioService
 
     public Usuario ObtenerUsuarioPorId(int idUsuario)
     {
+        if (idUsuario <= 0)
+        {
+            throw new ArgumentException("El ID del usuario debe ser un número positivo.", nameof(idUsuario));
+        }
+
         return _usuarioDAO.ObtenerUsuarioPorId(idUsuario);
     }
 
@@ -102,6 +147,16 @@ public class UsuarioService
         }
 
         return _usuarioDAO.ObtenerUsuarioPorCorreo(correo);
+    }
+
+    public Usuario ObtenerUsuarioPorCedula(string cedula)
+    {
+        if (string.IsNullOrEmpty(cedula))
+        {
+            throw new ArgumentException("La cédula no puede ser nula o vacía.", nameof(cedula));
+        }
+
+        return _usuarioDAO.ObtenerUsuarioPorCedula(cedula);
     }
 
     public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario)

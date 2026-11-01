@@ -15,6 +15,7 @@ public interface IUsuarioDAO
 
     Usuario ObtenerUsuarioPorId(int id);
     Usuario ObtenerUsuarioPorCorreo(string correo);
+    Usuario ObtenerUsuarioPorCedula(string cedula);
     RolUsuario? ObtenerRolUsuarioPorId(int id); // se habilita el nulleable con '?' para poder retornar null en caso de que no se encuentre el rol del usuario
 
     /// <summary>

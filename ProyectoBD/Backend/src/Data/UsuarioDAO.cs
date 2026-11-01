@@ -190,6 +190,29 @@ public class UsuarioDAO : IUsuarioDAO
             throw new ErrorDeBaseDeDatos(exception);
         }
     }
+    public Usuario ObtenerUsuarioPorCedula(string cedula)
+    {
+        const string sql = $"SELECT {ColumnasUsuario} FROM usuario u WHERE u.cedula = @cedula;";
+
+        try
+        {
+            using var conexion = Conexion.Obtener();
+            conexion.Open();
+            using var comando = new MySqlCommand(sql, conexion);
+            comando.Parameters.AddWithValue("@cedula", cedula);
+
+            using var lector = comando.ExecuteReader();
+            if (!lector.Read())
+                throw new CedulaUsuarioNoEncontradaException(cedula);
+
+            return MapearUsuario(lector);
+        }
+        catch (MySqlException exception)
+        {
+            throw new ErrorDeBaseDeDatos(exception);
+        }
+    }
+
     public RolUsuario? ObtenerRolUsuarioPorId(int idUsuario)
     {
         const string sql = "SELECT rolusuario FROM usuario WHERE idusuario = @idUsuario;";

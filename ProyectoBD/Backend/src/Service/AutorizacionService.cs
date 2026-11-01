@@ -13,11 +13,15 @@ public class AutorizacionService
         _usuarioDao = usuarioDao;
     }
 
-    public void ValidarRol(int idSolicitante, RolUsuario rolRequerido)
+    /// <summary>
+    /// Verifica que el solicitante tenga alguno de los roles permitidos.
+    /// Lanza UnauthorizedAccessException si no existe o su rol no está en la lista.
+    /// </summary>
+    public void ValidarRol(int idSolicitante, params RolUsuario[] rolesPermitidos)
     {
         RolUsuario? rol = _usuarioDao.ObtenerRolUsuarioPorId(idSolicitante);
 
-        if (rol != rolRequerido)
+        if (rol is null || !rolesPermitidos.Contains(rol.Value))
             throw new UnauthorizedAccessException("No tienes permiso para esta acción");
     }
 }

@@ -77,18 +77,20 @@ INSERT INTO `categoria` VALUES
 
 CREATE TABLE `usuario` (
   `idusuario` int NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(30) DEFAULT NULL,
+  `nombre` varchar(30) NOT NULL,
   `direccion` varchar(30) DEFAULT NULL,
   `telefono` varchar(10) DEFAULT NULL,
-  `cedula` varchar(30) DEFAULT NULL,
-  `correo` varchar(25) DEFAULT NULL,
-  `fechanacimiento` date DEFAULT NULL,
+  `cedula` varchar(30) NOT NULL,
+  `correo` varchar(25) NOT NULL,
+  `fechanacimiento` date NOT NULL,
   `genero` varchar(1) DEFAULT NULL,
   `rolusuario` int NOT NULL,
   `nombreempresa` varchar(20) DEFAULT NULL,
   `ciudad` varchar(30) DEFAULT NULL,
-  `contrasena` varchar(255) DEFAULT NULL,
+  `contrasena` varchar(255) NOT NULL,
   PRIMARY KEY (`idusuario`),
+  UNIQUE KEY `correo_uq` (`correo`),
+  UNIQUE KEY `cedula_uq` (`cedula`),
   KEY `idrol_idx` (`rolusuario`),
   CONSTRAINT `idrol`
     FOREIGN KEY (`rolusuario`)
@@ -102,13 +104,16 @@ COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `usuario`
 (`idusuario`, `nombre`, `direccion`, `telefono`, `cedula`, `correo`,
- `fechanacimiento`, `genero`, `rolusuario`, `nombreempresa`, `ciudad`) VALUES
+ `fechanacimiento`, `genero`, `rolusuario`, `nombreempresa`, `ciudad`, `contrasena`) VALUES
 (1, 'admin', 'casa', '3124253567', '12345',
- 's@email.com', '1970-09-12', 'M', 1, 'cocacola', 'circasia'),
+ 's@email.com', '1970-09-12', 'M', 1, 'cocacola', 'circasia',
+ '$2a$11$BLDMFA7tJL0IN42UqG7c8O8f7b7oQO1FG/x4LUlYkfB63swpMSqi.'),
 (2, 'porvee', 'apartamento', '314567890', '2345',
- 'd@email.com', '2000-10-11', 'M', 2, 'exito', 'armenia'),
+ 'd@email.com', '2000-10-11', 'M', 2, 'exito', 'armenia',
+ '$2a$11$miyYJ6S3FmsXWLT6AbfcM.FDST/kuG2XsTZnzpL0AYqOhzO9TkIba'),
 (3, 'vendedor', 'finca', '314567890', '3456',
- 'v@email.com', '1990-12-03', 'F', 3, 'D1', 'armenia');
+ 'v@email.com', '1990-12-03', 'F', 3, 'D1', 'armenia',
+ '$2a$11$lH0evvRnJYyyZAfijEUdCOYkwL91GkDjxbViWGSb1j.GoUY.5raha');
 
 -- ============================================================
 -- 6. TABLA: producto

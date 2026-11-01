@@ -114,7 +114,8 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
     }
 
     /// <summary>
-    /// Actualiza únicamente el precio de una oferta existente.
+    /// Actualiza únicamente el precio de una oferta existente. Devuelve true si se modificó
+    /// al menos una fila (no se asume una sola, la tabla no impide ofertas repetidas).
     /// </summary>
     public bool ActualizarPrecio(int idProveedor, int idProducto, decimal nuevoPrecio)
     {
@@ -134,7 +135,7 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
         comando.Parameters.AddWithValue("@precio", nuevoPrecio);
 
         conexion.Open();
-        return comando.ExecuteNonQuery() == 1;
+        return comando.ExecuteNonQuery() > 0;
     }
 
     /// <summary>
@@ -198,9 +199,10 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
     }
 
     /// <summary>
-    /// Obtiene la oferta única de un producto o informa si existen varias.
+    /// Obtiene todas las ofertas de un producto (puede ofrecerlo más de un proveedor),
+    /// ordenadas por proveedor. Lanza <see cref="ProductoOfertaNoEncontradoException"/> si no hay ninguna.
     /// </summary>
-    public ProductoOfertado ConsultarIdProducto(int idProducto)
+    public List<ProductoOfertado> ConsultarIdProducto(int idProducto)
     {
         const string sql = """
             SELECT po.proveedorid,
@@ -222,24 +224,26 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
 
         conexion.Open();
         using var lector = comando.ExecuteReader();
+        var ofertas = new List<ProductoOfertado>();
 
-        if (!lector.Read())
+        while (lector.Read())
+        {
+            ofertas.Add(new ProductoOfertado(
+                lector.GetInt32("proveedorid"),
+                LeerProducto(lector),
+                lector.GetDecimal("precio"),
+                lector.GetInt32("tiempoentrega")));
+        }
+
+        if (ofertas.Count == 0)
             throw new ProductoOfertaNoEncontradoException(idProducto);
 
-        var oferta = new ProductoOfertado(
-            lector.GetInt32("proveedorid"),
-            LeerProducto(lector),
-            lector.GetDecimal("precio"),
-            lector.GetInt32("tiempoentrega"));
-
-        if (lector.Read())
-            throw new MultiplesOfertasException(idProducto);
-
-        return oferta;
+        return ofertas;
     }
 
     /// <summary>
-    /// Elimina una oferta por la combinación de proveedor y producto.
+    /// Elimina una oferta por la combinación de proveedor y producto. Devuelve true si se
+    /// borró al menos una fila (no se asume una sola, la tabla no impide ofertas repetidas).
     /// </summary>
     public bool Eliminar(int idProveedor, int idProducto)
     {
@@ -255,6 +259,6 @@ public class ProductoOfertadoDAO : IProductoOfertadoDAO
         comando.Parameters.AddWithValue("@idProducto", idProducto);
 
         conexion.Open();
-        return comando.ExecuteNonQuery() == 1;
+        return comando.ExecuteNonQuery() > 0;
     }
 }

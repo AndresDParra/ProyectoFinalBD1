@@ -65,7 +65,7 @@ public class ProveedorService
         return _productoOfertadoDao.ConsultarIdProveedor(idSolicitante);
     }
 
-    public ProductoOfertado ConsultarProducOfertadoPorIdProducto(int idProducto)
+    public List<ProductoOfertado> ConsultarProducOfertadoPorIdProducto(int idProducto)
     {
         if (!_productoDAO.Existe(idProducto))
         {
@@ -79,9 +79,9 @@ public class ProveedorService
     {
         _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor);
 
-        if (nuevoPrecio < 0)
+        if (nuevoPrecio <= 0)
         {
-            throw new ArgumentException("El precio no puede ser negativo.");
+            throw new ArgumentException("El precio no puede ser menor a 0.");
         }
 
         if (!_productoDAO.Existe(idProducto))

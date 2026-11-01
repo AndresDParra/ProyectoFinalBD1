@@ -1,6 +1,6 @@
 # Proyecto Final - Bases de Datos I
 
-Proyecto académico de la Universidad del Quindío para modelar una aplicación de gestión de usuarios, proveedores, vendedores y productos utilizando C#, .NET y MySQL.
+Proyecto académico de la Universidad del Quindío: sistema de información para gestionar proveedores, productos, categorías y usuarios, desarrollado con C#, .NET 10 y MySQL.
 
 ## Integrantes
 
@@ -8,295 +8,238 @@ Proyecto académico de la Universidad del Quindío para modelar una aplicación 
 - Andres David Parra
 - Juan David Castillo Hernandez
 
+## Contexto del proyecto
+
+Las diversas empresas de carácter comercial requieren de sistemas de información que les permita determinar los proveedores a los que se pueden realizar los pedidos de sus productos. Los proveedores pueden estar en cualquier ciudad de Colombia y, es necesario almacenar los datos de estos. Así mismo, es fundamental poder identificar los productos, con sus datos, que cada proveedor puede enviar. Es importante determinar que, un Proveedor puede proveer varios productos y, que un Producto puede ser adquirido de varios proveedores. Los productos se pueden clasificar en Categorías, lo cual podrá identificar las familias de Productos. De las Categorías, también es importante almacenar sus datos básicos.
+
+La aplicación deberá contar con un sistema básico de seguridad que consiste en un login de usuarios. Habrán tres tipos de usuarios: El Administrador (solo 1), los usuarios tradicionales y los usuarios esporádicos. Solo el Administrador puede crear nuevos usuarios. Los usuarios tradicionales pueden ejecutar los CRUD para la gestión de datos. Los usuarios esporádicos solo podrán ejecutar las consultas. También, se contará con una Bitácora que almacenará los datos del ingreso y la salida de los usuarios del sistema (fechas y horas de entrada y salida).
+
+### Cómo se traduce el enunciado al proyecto
+
+| Concepto del enunciado | En el proyecto |
+| --- | --- |
+| Administrador (solo 1) | `RolUsuario.Administrador` (id 1) |
+| Usuario tradicional | `RolUsuario.Proveedor` (id 2): gestiona sus productos ofertados |
+| Usuario esporádico | `RolUsuario.Vendedor` (id 3): solo consulta |
+| Proveedor con empresa y ciudad | `Usuario` con rol Proveedor; `nombreempresa` y `ciudad` |
+| Proveedor ofrece varios productos y un producto tiene varios proveedores | Tabla puente `productosofertados` (relación muchos a muchos con precio y tiempo de entrega) |
+| Categorías de productos | Tabla `categoria` y enum `CategoriaProducto` |
+| Login | `AutenticacionService` con contraseñas protegidas con bcrypt |
+| Bitácora de ingreso y salida | **No implementada** (ver [Pendiente](#pendiente-respecto-al-enunciado)) |
+
 ## Estado actual
 
-El proyecto se encuentra en una etapa de persistencia y servicios de aplicación. Actualmente contiene:
+El backend está implementado como una biblioteca de clases dentro de un proyecto de consola. Contiene:
 
-- Modelos de dominio para usuarios, administradores, proveedores, vendedores y productos.
-- Un enum para clasificar productos en diez categorías.
-- Interfaces DAO y sus implementaciones para acceder a MySQL con consultas parametrizadas.
-- Operaciones CRUD para proveedores, vendedores y productos.
-- Operaciones para crear y consultar administradores, incluyendo la regla de que solo puede existir un administrador inicial.
-- Gestión de productos ofertados por proveedores, con precio por proveedor.
-- Servicios que validan existencia, evitan duplicados y coordinan operaciones entre DAO.
-- Una clase centralizada para construir conexiones MySQL y comprobar la conectividad.
-- Un script SQL inicial para `categoria`, `producto` y `proveedor`.
+- Modelos de dominio para usuarios (con rol), productos y productos ofertados.
+- DAO que acceden a MySQL con SQL parametrizado (`MySql.Data`).
+- Servicios con las reglas de negocio, la autenticación (login con bcrypt) y la autorización por rol.
+- Un script SQL (`BDproyecto.sql`) con el esquema y datos iniciales.
 
-La aplicación todavía es un ejecutable de consola. [Program.cs](ProyectoBD/Program.cs) únicamente imprime `Hello, World!`; por tanto, los servicios, DAO y la conexión no se ejecutan automáticamente desde un flujo de aplicación.
+**El proyecto todavía no tiene interfaz.** [Program.cs](ProyectoBD/Program.cs) solo imprime `Hello, World!`; los servicios se pueden usar desde código pero ningún flujo los invoca.
 
-## Estructura actual
+## Estructura de carpetas
 
 ```text
 ProyectoFinalBD1/
-├── BDproyecto.sql                  # Esquema inicial de MySQL
+├── BDproyecto.sql                      # Esquema y datos iniciales de MySQL
 ├── README.md
-├── He gawn                       
+├── He gawn                             # Archivo suelto sin uso en el código
 └── ProyectoBD/
-    ├── Program.cs                 # Punto de entrada actual: aplicación de consola
-    ├── ProyectoBD.csproj          # Proyecto .NET 10 y paquete MySql.Data
+    ├── Program.cs                      # Punto de entrada actual (solo "Hello, World!")
+    ├── ProyectoBD.csproj               # .NET 10; paquetes MySql.Data y BCrypt.Net-Next
     └── Backend/
         └── src/
-            ├── Model/             # Entidades, relaciones y reglas de dominio
+            ├── Model/                  # Entidades y reglas de dominio
             │   ├── Usuario.cs
-            │   ├── Administrador.cs
-            │   ├── Proveedor.cs
-            │   ├── Vendedor.cs
+            │   ├── RolUsuario.cs
             │   └── Producto/
             │       ├── Producto.cs
             │       ├── ProductoOfertado.cs
             │       └── CategoriaProducto.cs
-            ├── Data/              # Conexión y acceso directo a MySQL
+            ├── Data/                   # Acceso a MySQL
             │   ├── Conexion.cs
-            │   ├── AdministradorDAO.cs
+            │   ├── UsuarioDAO.cs
             │   ├── ProductoDAO.cs
             │   ├── ProductoOfertadoDAO.cs
-            │   ├── ProveedorDAO.cs
-            │   ├── VendedorDAO.cs
-            │   └── DAOInterface/
-            │       ├── IAdministradorDAO.cs
-            │       ├── IProductoDAO.cs
-            │       ├── IProductoOfertadoDAO.cs
-            │       ├── IProveedorDAO.cs
-            │       └── IVendedorDAO.cs
-            └── Service/            # Casos de uso y validaciones sobre los DAO
-                ├── AdministradorService.cs
+            │   ├── DAOInterface/       # IUsuarioDAO, IProductoDAO, IProductoOfertadoDAO
+            │   └── exception/          # Excepciones propias de los DAO
+            └── Service/                # Casos de uso y reglas de negocio
+                ├── AutentifiacionService.cs     # clase AutenticacionService
+                ├── AutorizacionService.cs
+                ├── UsuarioService.cs
                 ├── ProductoService.cs
-                ├── ProveedorService.cs
-                └── VendedorService.cs
+                ├── ProductoOfertadoService.cs   # contiene la clase ProveedorService
+                └── exception/          # Excepciones de las reglas de negocio
 ```
 
-Las carpetas `bin/` y `obj/` son artefactos generados por .NET y no forman parte de la arquitectura de la aplicación.
+Las carpetas `bin/` y `obj/` son artefactos generados por .NET y están excluidas por [.gitignore](.gitignore).
 
-## Modelo de dominio
+> El archivo `ProductoOfertadoService.cs` declara la clase `ProveedorService`, y `AutentifiacionService.cs` declara `AutenticacionService`. Los nombres de archivo y de clase no coinciden.
 
-### Usuario
+## Arquitectura
 
-`Usuario` es una clase abstracta con la información común de los usuarios:
+El código se organiza en tres capas, y cada una solo conoce a la inferior:
 
-- Nombre.
-- Dirección.
-- Teléfono.
-- Cédula.
-- Correo.
-- Fecha de nacimiento.
-- Género.
+```text
+Service   -> reglas de negocio, autenticación y autorización por rol
+   |
+Data      -> DAO: SQL parametrizado sobre MySQL (interfaces en DAOInterface/)
+   |
+MySQL     -> esquema definido en BDproyecto.sql
+```
 
-Las clases `Administrador`, `Proveedor` y `Vendedor` heredan de `Usuario` y agregan sus identificadores o datos específicos. No existe actualmente una clase `Cliente` en el código fuente.
+- **`Model`**: entidades que validan sus propios datos en el constructor. No contienen SQL.
+- **`Data`**: cada DAO implementa una interfaz y solo lee o escribe datos. Los errores de MySQL se envuelven en `ErrorDeBaseDeDatos` (en `UsuarioDAO`).
+- **`Service`**: decide qué se permite. Recibe los DAO por constructor (como interfaces), de modo que se pueden sustituir por dobles en las pruebas.
 
-### Administrador
+### Roles y permisos
 
-`Administrador` contiene `IdAdministrador`. `AdministradorService` permite actualizarlo si existe y ofrece operaciones para crear, consultar, actualizar y eliminar vendedores y proveedores, además de consultar productos. La clase representa el rol con mayor nivel de gestión, pero no existe todavía un mecanismo de autenticación o autorización que obligue a usar este servicio únicamente desde una sesión de administrador.
+| Rol | Id | Qué puede hacer |
+| --- | --- | --- |
+| Administrador | 1 | Crear, actualizar y eliminar usuarios (`UsuarioService`); crear y eliminar productos (`ProductoService`) |
+| Proveedor (tradicional) | 2 | Crear y eliminar productos (`ProductoService`); crear, consultar, actualizar el precio y eliminar sus productos ofertados (`ProveedorService`) |
+| Vendedor (esporádico) | 3 | Consultas |
 
-### Proveedor
+`AutorizacionService.ValidarRol(idSolicitante, rol)` consulta el rol del usuario en la base de datos y lanza `UnauthorizedAccessException` si no coincide. Las operaciones de escritura de `UsuarioService` exigen Administrador, y las de `ProveedorService` exigen Proveedor.
 
-`Proveedor` contiene `IdProveedor`, `NombreEmpresa` y `Ciudad`, además de los datos comunes heredados de `Usuario`. La relación con los productos se persiste mediante `ProductoOfertadoDAO`; la clase de dominio no expone actualmente métodos públicos para modificar su colección de ofertas.
+Reglas del administrador implementadas en `UsuarioService`:
 
-`ProveedorService` recibe el ID del proveedor autenticado al construirse y comprueba que exista. Después permite:
+- No se puede crear un usuario con rol Administrador, para mantener un solo administrador.
+- No se puede actualizar ni eliminar a un administrador.
+- No se puede crear un usuario con un id, correo o cédula ya existentes.
 
-- Crear una oferta para un producto existente.
-- Consultar todas las ofertas del proveedor autenticado.
-- Consultar una oferta por ID de producto.
-- Actualizar el precio de una oferta.
-- Eliminar una oferta.
+## Servicios
 
-El precio actualizado debe ser mayor que cero. El servicio usa siempre el proveedor autenticado, por lo que sus métodos no reciben un proveedor arbitrario para modificar sus ofertas.
+### `AutenticacionService`
+- `Login(correo, contrasena)`: verifica el hash bcrypt y devuelve el `Usuario`. Lanza `UnauthorizedAccessException` si las credenciales son inválidas. Ejecuta siempre una verificación, exista o no el correo, para igualar tiempos de respuesta.
+- `CambiarContrasena(idUsuario, actual, nueva)`: exige la contraseña actual.
+- `ValidarContrasenaNueva`: mínimo 8 caracteres.
 
-### Vendedor
-
-`Vendedor` contiene `IdVendedor` y una lista `productosVenta`. El DAO permite crear, consultar, actualizar, eliminar y comprobar la existencia de vendedores. La lista de productos es únicamente una colección del modelo: no hay todavía persistencia de inventario, cantidades, precio de venta ni operaciones implementadas en `VendedorService`.
-
-### Producto y categorías
-
-`Producto` contiene:
-
-- `IdProducto`.
-- `Nombre`.
-- `Descripcion`.
-- `Categoria`.
-
-`CategoriaProducto` es un `enum` con las categorías `Electronica`, `Ropa`, `Hogar`, `Deportes`, `Juguetes`, `Belleza`, `Alimentos`, `Libros`, `Musica` y `Peliculas`.
-
-`ProductoOfertado` representa la relación entre un proveedor y un producto, junto con el precio que ofrece ese proveedor. El DAO consulta todas las ofertas de un proveedor, pero la consulta por producto devuelve solo una oferta (`LIMIT 1`) cuando existen varias. El modelo representa una relación muchos a muchos, aunque el esquema SQL incluido todavía no contiene la tabla puente `productoofertado`.
-
-## Servicios de aplicación
-
-Los servicios actuales son clases coordinadoras que reciben DAO por constructor y aplican validaciones antes de acceder a MySQL. Todavía no están registrados en un contenedor de inyección de dependencias ni son invocados por `Program.cs`.
-
-### `AdministradorService`
-
-- Actualiza un administrador existente.
-- Crea, consulta, actualiza y elimina vendedores.
-- Crea, consulta, actualiza y elimina proveedores.
-- Consulta productos por ID.
-- Devuelve `false` cuando una operación de creación, actualización o eliminación no puede continuar porque el registro no existe o ya existe.
-- Lanza `KeyNotFoundException` al consultar un vendedor, proveedor o producto inexistente.
+### `UsuarioService`
+- Administrador: `CrearUsuario`, `ActualizarUsuario`, `EliminarUsuario`.
+- Consultas abiertas: `ObtenerUsuarioPorId`, `ObtenerUsuarioPorCorreo`, `ObtenerUsuarioPorCedula`, `ObtenerRolUsuarioPorId`, `ObtenerUsuarioPorIdTipo` (acepta el número o el nombre del rol), `ObtenerProveedorPorCiudad`, `ObtenerProveedorPorNombreEmpresa`.
+- Las contraseñas se guardan solo como hash bcrypt en la columna `usuario.contrasena`; la entidad `Usuario` nunca contiene la contraseña.
 
 ### `ProductoService`
-
-- Crea productos y rechaza IDs duplicados con `InvalidOperationException`.
-- Consulta productos por ID.
-- Elimina un producto solo si existe y no está siendo ofertado por ningún proveedor.
-- Lanza `KeyNotFoundException` cuando se consulta o elimina un producto inexistente.
+- `CrearProducto(idSolicitante, producto)` (rechaza ids duplicados) y `EliminarProducto(idSolicitante, idProducto)` (solo si ningún proveedor lo ofrece). Ambos exigen rol Proveedor o Administrador (`AutorizacionService.ValidarRol`).
+- `ConsultarProducto` está abierto a cualquier usuario.
 
 ### `ProveedorService`
-
-Además de restringir las operaciones de creación, actualización y eliminación al proveedor recibido en el constructor, valida que el producto consultado exista antes de operar. La consulta por ID de producto delega en el DAO y puede devolver una oferta de cualquier proveedor, porque actualmente no incluye el ID del proveedor autenticado en su filtro. La creación de la oferta delega la validación de precio positivo al DAO al actualizar; actualmente la creación no aplica esa misma validación antes de insertar.
-
-### `VendedorService`
-
-El servicio define dependencias hacia los DAO de productos, ofertas y proveedores, pero sus métodos de consulta todavía no están implementados. Los comentarios internos describen consultas futuras por proveedor, producto, rango de precios, categoría, nombre y ciudad.
+- `CrearProductoOfertado`, `EliminarProductoOfertado`, `ActualizarPrecioProductoOfertado` y `ConsultarProductoOfertadoPorProveedor`, todos para el proveedor solicitante.
+- `ConsultarProducOfertadoPorIdProducto`: devuelve la lista de ofertas de un producto (puede haber varios proveedores).
 
 ## Acceso a datos
 
-Las interfaces de `Data/DAOInterface` definen los contratos de acceso a datos. Las implementaciones ejecutan SQL parametrizado usando `MySql.Data`.
+| DAO | Operaciones |
+| --- | --- |
+| `UsuarioDAO` | Consultar por id, correo, cédula, rol, tipo, ciudad y empresa; crear, actualizar, eliminar, comprobar existencia; leer y actualizar el hash de contraseña |
+| `ProductoDAO` | Crear, consultar por id, actualizar, eliminar y comprobar existencia |
+| `ProductoOfertadoDAO` | Crear (valida proveedor y producto en una transacción), actualizar precio, consultar por proveedor o por producto, comprobar existencia y eliminar |
 
-| DAO | Operaciones disponibles | Observaciones |
-| --- | --- | --- |
-| `AdministradorDAO` | Crear, consultar por ID, actualizar y comprobar existencia | La creación abre una transacción serializable y solo permite insertar el primer registro de la tabla. La consulta y actualización todavía mapean únicamente el ID; la actualización no modifica los demás datos. |
-| `ProveedorDAO` | Crear, consultar por ID, actualizar, eliminar y comprobar existencia | La creación intenta persistir datos de usuario, empresa y ciudad. La consulta devuelve el ID, el nombre y la ciudad; los demás datos de usuario se devuelven vacíos. |
-| `VendedorDAO` | Crear, consultar por ID, actualizar, eliminar y comprobar existencia | La consulta devuelve únicamente el ID. La actualización actual asigna el mismo ID al mismo ID y no modifica los demás datos. |
-| `ProductoDAO` | Crear, consultar por ID, actualizar, eliminar y comprobar existencia | Usa el enum `CategoriaProducto` convertido a entero. La creación y actualización no envían `Prproveedor`, aunque esa columna aparece como obligatoria en el SQL actual. |
-| `ProductoOfertadoDAO` | Crear, actualizar precio, comprobar existencia por producto, consultar por proveedor, consultar por producto y eliminar | La consulta por proveedor devuelve una lista ordenada de ofertas. La consulta por producto devuelve una sola oferta total mediante `LIMIT 1`. |
+Detalles de implementación:
+- **Categorías:** `categoria.Cacodigo` empieza en 1 y el enum `CategoriaProducto` en 0, por lo que `ProductoDAO` suma 1 al guardar y resta 1 al leer.
+- **Proveedores:** son filas de `usuario` con `rolusuario = 2`; `nombreempresa` y `ciudad` solo se usan con ese rol.
+- **Excepciones:** `Data/exception/` (acceso a datos) y `Service/exception/` (reglas de negocio, por ejemplo correo o cédula duplicados).
 
-Las interfaces `IAdministradorDAO`, `IProveedorDAO`, `IVendedorDAO`, `IProductoDAO` e `IProductoOfertadoDAO` definen estos contratos y permiten que los servicios dependan de abstracciones en lugar de implementar SQL directamente.
+### Conexión
 
-`Conexion` centraliza la creación de conexiones MySQL y expone `ProbarAsync(CancellationToken)` para comprobar la conectividad de forma asíncrona. Cada DAO solicita una nueva conexión con `Conexion.Obtener()`. La cadena de conexión se obtiene en este orden:
+`Conexion` crea las conexiones y expone `ProbarAsync()` para comprobarla. La cadena se arma así:
 
 1. `MYSQL_CONNECTION_STRING`, si está definida.
-2. Variables individuales de entorno:
-   - `MYSQL_HOST` - valor predeterminado: `localhost`.
-   - `MYSQL_PORT` - opcional; MySQL usa `3306` por defecto.
-   - `MYSQL_DATABASE` - valor predeterminado: `proyecto`.
-   - `MYSQL_USER` - valor predeterminado: `root`.
-   - `MYSQL_PASSWORD` - valor predeterminado: cadena vacía.
+2. Si no, las variables `MYSQL_HOST` (`localhost`), `MYSQL_PORT` (opcional), `MYSQL_DATABASE` (`proyecto`), `MYSQL_USER` (`root`) y `MYSQL_PASSWORD` (vacía).
 
-La conexión usa `SslMode=Preferred` y un tiempo de espera de cinco segundos. No se deben incluir contraseñas reales en el repositorio. Para otros entornos se recomienda configurar estas variables fuera del código fuente.
+Usa `SslMode=Preferred` y un tiempo de espera de 5 segundos. La cadena se lee una sola vez al primer uso. No incluyas contraseñas reales en el repositorio.
 
 ## Base de datos
 
-El archivo [BDproyecto.sql](BDproyecto.sql) es un volcado de MySQL 8.0.46 para la base de datos `proyecto`. Actualmente crea estas tablas:
+[BDproyecto.sql](BDproyecto.sql) crea la base `proyecto` (MySQL 8.0 o superior, por su collation `utf8mb4_0900_ai_ci`) con estas tablas:
 
-### `categoria`
+| Tabla | Contenido |
+| --- | --- |
+| `rolusuario` | Roles: 1 Administrador, 2 proveedor, 3 vendedor |
+| `categoria` | `Cacodigo`, `nombre` (10 categorías iniciales) |
+| `usuario` | Datos personales, `rolusuario`, `nombreempresa`, `ciudad` y `contrasena` (hash). `correo` y `cedula` son únicos; `nombre`, `cedula`, `correo`, `fechanacimiento` y `contrasena` son obligatorios |
+| `producto` | `Prid`, `nombre`, `descripcion`, `categoria` (20 productos iniciales) |
+| `productosofertados` | `proveedorid`, `producto`, `precio`, `tiempoentrega` (sin datos iniciales) |
 
-- `Cacodigo`: clave primaria entera.
-- `Catipo`: nombre de la categoría.
+> El script **borra y recrea** las tablas (`DROP TABLE IF EXISTS`), así que no lo ejecutes sobre datos que quieras conservar.
 
-### `proveedor`
+### Usuarios iniciales (solo para desarrollo)
 
-- `Pcedula`: clave primaria y referencia utilizada por los productos.
-- `Pnombre`: nombre del proveedor.
-- `Ptelefono`: teléfono opcional.
-- `Pciudad`: ciudad.
+| Rol | Correo | Contraseña |
+| --- | --- | --- |
+| Administrador | `s@email.com` | `Admin12345` |
+| Proveedor | `d@email.com` | `Proveedor12345` |
+| Vendedor | `v@email.com` | `Vendedor12345` |
 
-El script actual solo contiene estas cuatro columnas. Sin embargo, `ProveedorDAO.Crear` intenta insertar también `PnombreUsuario`, `Pdireccion`, `PcedulaUsuario`, `Pcorreo`, `PfechaNacimiento` y `Pgenero`, por lo que esa operación requiere ajustar el esquema o el DAO.
-
-### `producto`
-
-- `Prid`: clave primaria autoincremental.
-- `Prnombre`: nombre.
-- `Prdecripcion`: descripción; el nombre de la columna conserva un error tipográfico del esquema original.
-- `Prproveedor`: proveedor obligatorio y clave foránea.
-- `Prcategoria`: categoría obligatoria y clave foránea.
-
-El script no crea actualmente las tablas `administrador`, `vendedor` ni `productoofertado`, aunque los DAO contienen SQL que las utiliza. Tampoco incluye datos iniciales para categorías. Además, `ProductoDAO` no envía el valor de `Prproveedor` al crear o actualizar un producto. Por eso, los DAO y servicios no pueden ejecutarse correctamente contra una base creada únicamente con este script sin completar primero el esquema y ajustar el mapeo.
+Los hashes están versionados en el script, así que cualquiera con acceso al repositorio puede deducir estas contraseñas. **Deben cambiarse** en cualquier entorno real.
 
 ## Requisitos
 
 - .NET SDK 10.
-- MySQL Server 8.0 o compatible.
-- Una base de datos llamada `proyecto`.
-- Paquete NuGet `MySql.Data` 9.4.0, restaurado automáticamente por el proyecto.
+- MySQL Server 8.0 o superior.
+- Paquetes NuGet `MySql.Data` 9.4.0 y `BCrypt.Net-Next` 4.2.0, restaurados automáticamente.
 
-La versión objetivo y la dependencia principal están declaradas en [ProyectoBD.csproj](ProyectoBD/ProyectoBD.csproj).
+## Cómo ejecutar
 
-## Configuración y ejecución
+1. **Crear la base de datos** (pide la contraseña de MySQL):
 
-Desde la raíz del repositorio:
+   ```bash
+   mysql -u tu_usuario -p < BDproyecto.sql
+   ```
 
-```bash
-cd ProyectoBD
-dotnet restore
-dotnet build
-dotnet run
-```
+2. **Configurar la conexión** si tu MySQL no usa los valores por defecto (`localhost`, usuario `root`, sin contraseña):
 
-La ejecución actual muestra:
+   ```bash
+   export MYSQL_HOST=localhost
+   export MYSQL_PORT=3306
+   export MYSQL_DATABASE=proyecto
+   export MYSQL_USER=tu_usuario
+   export MYSQL_PASSWORD='tu contraseña'
+   ```
 
-```text
-Hello, World!
-```
+3. **Compilar y ejecutar**:
 
-El proyecto compila como aplicación de consola para .NET 10, pero no ofrece todavía un menú ni un flujo interactivo. Para usar los servicios de forma programática es necesario construir sus dependencias (`AdministradorDAO`, `ProveedorDAO`, `VendedorDAO`, `ProductoDAO` y `ProductoOfertadoDAO`) y llamar explícitamente a sus métodos.
+   ```bash
+   cd ProyectoBD
+   dotnet restore
+   dotnet build
+   dotnet run
+   ```
 
-Para configurar MySQL en Linux, por ejemplo:
+   Por ahora solo imprime `Hello, World!`: el proyecto compila, pero no hay menú ni flujo interactivo. Para usar los servicios hay que crear los DAO y servicios desde código, por ejemplo:
 
-```bash
-export MYSQL_HOST=localhost
-export MYSQL_PORT=3306
-export MYSQL_DATABASE=proyecto
-export MYSQL_USER=tu_usuario
-export MYSQL_PASSWORD='tu contraseña'
-```
+   ```csharp
+   var usuarioDao = new UsuarioDAO();
+   var autenticacion = new AutenticacionService(usuarioDao);
+   Usuario admin = autenticacion.Login("s@email.com", "Admin12345");
+   ```
 
-Después se puede importar el esquema desde MySQL:
+`Program.cs` no llama a `Conexion.ProbarAsync()`, por lo que un error de configuración solo aparece cuando un DAO abre su primera conexión.
 
-```bash
-mysql -u tu_usuario -p proyecto < BDproyecto.sql
-```
+## Pruebas
 
-La aplicación actual no carga ni ejecuta automáticamente `BDproyecto.sql`, y tampoco llama a `Conexion.ProbarAsync`; esos pasos deben realizarse antes de probar los DAO o servicios directamente. La importación del script tampoco es suficiente para habilitar todas las operaciones, porque faltan tablas y columnas requeridas por el código.
+La carpeta de pruebas (xUnit) fue retirada del repositorio y está pendiente de reconstruirse. El plan es usar:
 
-## Arquitectura actual y evolución prevista
+- Pruebas de servicios con DAO falsos (sin base de datos).
+- Pruebas de integración de los DAO contra una base separada cuyo nombre termine en `_test` (por ejemplo `proyecto_test`), cargando `BDproyecto.sql` sin sus sentencias `CREATE DATABASE` y `USE` para no tocar la base de desarrollo.
 
-La arquitectura implementada actualmente está organizada en tres responsabilidades principales:
+`ProyectoBD.csproj` excluye `Backend/tests/**` de la compilación del proyecto principal.
 
-- `Model`: entidades y enum del dominio (`Usuario`, `Administrador`, `Proveedor`, `Vendedor`, `Producto` y `ProductoOfertado`).
-- `Data`: contratos DAO, SQL parametrizado y construcción de conexiones MySQL.
-- `Service`: casos de uso y validaciones que coordinan los DAO para administradores, proveedores y productos.
+## Pendiente respecto al enunciado
 
-El punto de entrada todavía no conecta estas capas con una interfaz de usuario. La siguiente evolución prevista es exponer los servicios mediante una API web.
+Funcionalidades que el enunciado pide y todavía no están (o no están completas):
 
-Para integrar un frontend web en el futuro, la aplicación debería evolucionar hacia una API ASP.NET Core con capas separadas:
+1. **Bitácora de ingreso y salida.** No existe tabla ni código. Debe guardar usuario, fecha y hora de entrada y de salida, y registrarse en el login y el logout.
+2. **Sesión y cierre de sesión.** `AutenticacionService.Login` devuelve el usuario, pero no hay sesión ni `Logout`. Lo necesita la bitácora.
+3. **Gestión de categorías.** Existe la tabla y el enum, pero no hay modelo, DAO ni servicio para crear, consultar, actualizar o eliminar categorías y sus datos básicos.
+4. **Actualizar productos.** `ProductoService` no tiene operación de actualización; `ProductoDAO.Actualizar` existe pero ningún servicio la expone.
+5. **Consultas para el usuario esporádico.** Faltan búsquedas de productos por categoría, nombre y rango de precio, y de ofertas por proveedor o ciudad.
+6. **Proveedores de cualquier ciudad de Colombia.** La ciudad es texto libre, sin validación ni catálogo de ciudades.
+7. **Un solo administrador a nivel de base de datos.** Hoy solo lo impide el servicio; la tabla no lo garantiza.
+8. **`productosofertados` sin llave primaria** `(proveedorid, producto)`: la base permite ofertas repetidas.
+9. **Interfaz de usuario.** Menú de consola o API web con login, y un `Program.cs` que arme los servicios.
+10. **Pruebas automatizadas** (ver la sección anterior).
 
-```text
-Frontend web (React, Vue, Angular u otro)
-                    |
-              HTTP / JSON
-                    |
-API / Controllers
-                    |
-Application / Services / DTOs
-                    |
-Domain / Entities
-                    |
-Infrastructure / Repositories / MySQL
-```
-
-Una estructura futura recomendada sería:
-
-```text
-Backend/src/
-├── Api/
-│   ├── Controllers/
-│   └── Middleware/
-├── Application/
-│   ├── DTOs/
-│   ├── Interfaces/
-│   └── Services/
-├── Domain/
-│   ├── Entities/
-│   ├── Enums/
-│   └── Exceptions/
-└── Infrastructure/
-    ├── Authentication/
-    ├── Data/
-    └── Reports/
-```
-
-Las responsabilidades previstas son:
-
-- `Domain`: entidades y reglas propias del negocio; no debe contener SQL.
-- `Data`: repositorios o DAO y detalles de MySQL.
-- `Service`: casos de uso, validaciones y coordinación entre repositorios.
-- `Service/Autentificacion`: hash de contraseñas, validación de credenciales.
-- `Service/Report`: generación de PDF a partir de datos obtenidos por servicios.
+Mejoras técnicas que se dejaron anotadas: longitudes de columna cortas sin validar en el modelo (`correo` 25, `telefono` 10, `nombreempresa` 20), manejo de errores de MySQL solo en `UsuarioDAO`, y renombrar `ProveedorService` y `AutenticacionService` para que coincidan con sus archivos.

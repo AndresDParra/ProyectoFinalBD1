@@ -1,17 +1,27 @@
 public class ProductoService
 {
+    private readonly AutorizacionService _autorizacionService;
     private readonly IProductoDAO _productoDAO;
     private readonly IProductoOfertadoDAO _productoOfertadoDAO;
 
-    public ProductoService(IProductoDAO productoDAO, IProductoOfertadoDAO productoOfertadoDAO)
+    public ProductoService(
+        AutorizacionService autorizacionService,
+        IProductoDAO productoDAO,
+        IProductoOfertadoDAO productoOfertadoDAO)
     {
+        _autorizacionService = autorizacionService;
         _productoDAO = productoDAO;
         _productoOfertadoDAO = productoOfertadoDAO;
     }
 
-    public bool CrearProducto(Producto producto)
+    /// <summary>
+    /// Crea un producto. Solo pueden hacerlo los usuarios con rol Proveedor o Administrador.
+    /// </summary>
+    public bool CrearProducto(int idSolicitante, Producto producto)
     {
         ArgumentNullException.ThrowIfNull(producto);
+
+        _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor, RolUsuario.Administrador);
 
         if (_productoDAO.Existe(producto.IdProducto))
         {
@@ -22,13 +32,17 @@ public class ProductoService
     }
 
     /// <summary>
-    /// Elimina un producto del sistema. Solo se puede eliminar un producto si no está siendo ofertado por ningún proveedor.
+    /// Elimina un producto del sistema. Solo pueden hacerlo los usuarios con rol Proveedor o Administrador,
+    /// y solo si el producto no está siendo ofertado por ningún proveedor.
     /// </summary>
+    /// <param name="idSolicitante">Id del usuario que solicita la eliminación.</param>
     /// <param name="idProducto"></param>
     /// <returns></returns>
     /// <exception cref="KeyNotFoundException"></exception>
-    public bool EliminarProducto(int idProducto)
+    public bool EliminarProducto(int idSolicitante, int idProducto)
     {
+        _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Proveedor, RolUsuario.Administrador);
+
         if (!_productoDAO.Existe(idProducto))
         {
             throw new KeyNotFoundException($"No existe un producto con el ID {idProducto}.");
