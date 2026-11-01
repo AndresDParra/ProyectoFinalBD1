@@ -4,14 +4,14 @@
 /// y realizar operaciones limitadas sobre los productos
 /// </summary>
 
-public class ProveedorService
+public class ProdcutoOfertadoService
 {
     private readonly AutorizacionService _autorizacionService;
     private readonly IProductoDAO _productoDAO;
 
     private readonly IProductoOfertadoDAO _productoOfertadoDao;
 
-    public ProveedorService(
+    public ProdcutoOfertadoService(
         AutorizacionService autorizacionService,
         IProductoDAO productoDAO,
         IProductoOfertadoDAO productoOfertadoDao)

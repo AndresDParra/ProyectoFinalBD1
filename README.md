@@ -25,7 +25,7 @@ La aplicación deberá contar con un sistema básico de seguridad que consiste e
 | Proveedor ofrece varios productos y un producto tiene varios proveedores | Tabla puente `productosofertados` (relación muchos a muchos con precio y tiempo de entrega) |
 | Categorías de productos | Tabla `categoria` y enum `CategoriaProducto` |
 | Login | `AutenticacionService` con contraseñas protegidas con bcrypt |
-| Bitácora de ingreso y salida | **No implementada** (ver [Pendiente](#pendiente-respecto-al-enunciado)) |
+| Bitácora de ingreso y salida | Tabla `bitacora` + `BitacoraDAO`; el login registra la entrada y `Logout` la salida (**falta la tabla en `BDproyecto.sql`**, ver [Bitácora](#bitácora-de-entrada-y-salida)) |
 
 ## Estado actual
 
@@ -53,6 +53,7 @@ ProyectoFinalBD1/
             ├── Model/                  # Entidades y reglas de dominio
             │   ├── Usuario.cs
             │   ├── RolUsuario.cs
+            │   ├── RegistroBitacora.cs
             │   ├── Producto/
             │   │   ├── Producto.cs
             │   │   ├── ProductoOfertado.cs
@@ -67,7 +68,8 @@ ProyectoFinalBD1/
             │   ├── ProductoDAO.cs
             │   ├── ProductoOfertadoDAO.cs
             │   ├── ConsultaDAO.cs      # Consultas con JOIN y subconsultas
-            │   ├── DAOInterface/       # IUsuarioDAO, IProductoDAO, IProductoOfertadoDAO, IConsultaDAO
+            │   ├── BitacoraDAO.cs      # Bitácora de entrada y salida
+            │   ├── DAOInterface/       # IUsuarioDAO, IProductoDAO, IProductoOfertadoDAO, IConsultaDAO, IBitacoraDAO
             │   └── exception/          # Excepciones propias de los DAO
             └── Service/                # Casos de uso y reglas de negocio
                 ├── AutentifiacionService.cs     # clase AutenticacionService
@@ -76,6 +78,7 @@ ProyectoFinalBD1/
                 ├── ProductoService.cs
                 ├── ProductoOfertadoService.cs   # contiene la clase ProveedorService
                 ├── ConsultaService.cs
+                ├── BitacoraService.cs
                 └── exception/          # Excepciones de las reglas de negocio
 ```
 
@@ -103,7 +106,7 @@ MySQL     -> esquema definido en BDproyecto.sql
 
 | Rol | Id | Qué puede hacer |
 | --- | --- | --- |
-| Administrador | 1 | Crear, actualizar y eliminar usuarios (`UsuarioService`); crear y eliminar productos (`ProductoService`) |
+| Administrador | 1 | Crear, actualizar y eliminar usuarios (`UsuarioService`); crear y eliminar productos (`ProductoService`); consultar la bitácora (`BitacoraService`) |
 | Proveedor (tradicional) | 2 | Crear y eliminar productos (`ProductoService`); crear, consultar, actualizar el precio y eliminar sus productos ofertados (`ProveedorService`) |
 | Vendedor (esporádico) | 3 | Consultas |
 
@@ -118,7 +121,8 @@ Reglas del administrador implementadas en `UsuarioService`:
 ## Servicios
 
 ### `AutenticacionService`
-- `Login(correo, contrasena)`: verifica el hash bcrypt y devuelve el `Usuario`. Lanza `UnauthorizedAccessException` si las credenciales son inválidas. Ejecuta siempre una verificación, exista o no el correo, para igualar tiempos de respuesta.
+- `Login(correo, contrasena)`: verifica el hash bcrypt, **registra la entrada en la bitácora** y devuelve el `Usuario`. Lanza `UnauthorizedAccessException` si las credenciales son inválidas, y no registra nada en ese caso. Ejecuta siempre una verificación, exista o no el correo, para igualar tiempos de respuesta. Si no se puede registrar la entrada, el inicio de sesión falla.
+- `Logout(idUsuario)`: **registra la salida**, cerrando la sesión abierta más reciente del usuario. Devuelve `false` si no tenía ninguna abierta.
 - `CambiarContrasena(idUsuario, actual, nueva)`: exige la contraseña actual.
 - `ValidarContrasenaNueva`: mínimo 8 caracteres.
 
@@ -134,6 +138,9 @@ Reglas del administrador implementadas en `UsuarioService`:
 ### `ProveedorService`
 - `CrearProductoOfertado`, `EliminarProductoOfertado`, `ActualizarPrecioProductoOfertado` y `ConsultarProductoOfertadoPorProveedor`, todos para el proveedor solicitante.
 - `ConsultarProducOfertadoPorIdProducto`: devuelve la lista de ofertas de un producto (puede haber varios proveedores).
+
+### `BitacoraService`
+- `ConsultarBitacora(idSolicitante, idUsuario?, desde?, hasta?)`: lista las sesiones (de la más reciente a la más antigua) con filtros opcionales por usuario y por rango de fechas de entrada. **Solo el Administrador** puede ejecutarla.
 
 ### `ConsultaService`
 Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualquier usuario, sin validación de rol; el DAO es `ConsultaDAO`.
@@ -153,6 +160,7 @@ Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualqui
 | `UsuarioDAO` | Consultar por id, correo, cédula, rol, tipo, ciudad y empresa; crear, actualizar, eliminar, comprobar existencia; leer y actualizar el hash de contraseña |
 | `ProductoDAO` | Crear, consultar por id, actualizar, eliminar y comprobar existencia |
 | `ProductoOfertadoDAO` | Crear (valida proveedor y producto en una transacción), actualizar precio, consultar por proveedor o por producto, comprobar existencia y eliminar |
+| `BitacoraDAO` | Registrar entrada, registrar salida y consultar la bitácora con filtros opcionales |
 | `ConsultaDAO` | Las cinco consultas con JOIN y subconsultas descritas en `ConsultaService`; no pertenecen a una sola entidad, por eso están separadas |
 
 Detalles de implementación:
@@ -183,6 +191,34 @@ Usa `SslMode=Preferred` y un tiempo de espera de 5 segundos. La cadena se lee un
 
 > El script **borra y recrea** las tablas (`DROP TABLE IF EXISTS`), así que no lo ejecutes sobre datos que quieras conservar.
 
+### Bitácora de entrada y salida
+
+Cada sesión es una fila de la tabla `bitacora`: se crea al iniciar sesión y se completa con `Logout`.
+
+| Columna | Descripción |
+| --- | --- |
+| `idbitacora` | Clave primaria autoincremental |
+| `idusuario` | Usuario que entró; pasa a `NULL` si el usuario se elimina, para conservar el historial |
+| `fechaentrada` | Fecha y hora del inicio de sesión |
+| `fechasalida` | Fecha y hora del cierre de sesión; `NULL` mientras la sesión sigue abierta |
+
+Si el programa se cierra sin llamar a `Logout`, `fechasalida` queda en `NULL` y la sesión se muestra como "salida no registrada" (`RegistroBitacora.SalidaRegistrada`). La interfaz gráfica debería llamar a `Logout` al cerrar sesión y al cerrar la ventana.
+
+> **Pendiente en `BDproyecto.sql`:** la tabla `bitacora` todavía no está en el script, y **mientras no exista, el login falla** (`ErrorDeBaseDeDatos`), porque no puede registrar la entrada. Al agregarla, hay que ponerla también al inicio de la lista de `DROP TABLE`, antes de `usuario`. La definición esperada está en el comentario de [BitacoraDAO.cs](ProyectoBD/Backend/src/Data/BitacoraDAO.cs):
+>
+> ```sql
+> CREATE TABLE `bitacora` (
+>   `idbitacora` int NOT NULL AUTO_INCREMENT,
+>   `idusuario` int DEFAULT NULL,
+>   `fechaentrada` datetime NOT NULL,
+>   `fechasalida` datetime DEFAULT NULL,
+>   PRIMARY KEY (`idbitacora`),
+>   KEY `idusuario_bitacora_idx` (`idusuario`),
+>   CONSTRAINT `idusuario_bitacora` FOREIGN KEY (`idusuario`)
+>     REFERENCES `usuario` (`idusuario`) ON DELETE SET NULL
+> ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+> ```
+
 ### Usuarios para pruebas
 
 `BDproyecto.sql` crea tres usuarios con contraseña ya cifrada (hash bcrypt), uno por rol. Sirven para probar el login y los permisos de cada rol sin crear usuarios a mano.
@@ -204,7 +240,7 @@ Qué se puede probar con cada uno:
 Ejemplo de login desde código:
 
 ```csharp
-var autenticacion = new AutenticacionService(new UsuarioDAO());
+var autenticacion = new AutenticacionService(new UsuarioDAO(), new BitacoraDAO());
 Usuario admin = autenticacion.Login("s@email.com", "Admin12345");
 ```
 
@@ -252,7 +288,7 @@ Notas:
 
    ```csharp
    var usuarioDao = new UsuarioDAO();
-   var autenticacion = new AutenticacionService(usuarioDao);
+   var autenticacion = new AutenticacionService(usuarioDao, new BitacoraDAO());
    Usuario admin = autenticacion.Login("s@email.com", "Admin12345");
    ```
 
@@ -260,19 +296,14 @@ Notas:
 
 ## Pruebas
 
-La carpeta de pruebas (xUnit) fue retirada del repositorio y está pendiente de reconstruirse. El plan es usar:
-
-- Pruebas de servicios con DAO falsos (sin base de datos).
-- Pruebas de integración de los DAO contra una base separada cuyo nombre termine en `_test` (por ejemplo `proyecto_test`), cargando `BDproyecto.sql` sin sus sentencias `CREATE DATABASE` y `USE` para no tocar la base de desarrollo.
-
-`ProyectoBD.csproj` excluye `Backend/tests/**` de la compilación del proyecto principal.
+El proyecto **no tiene pruebas automatizadas**: el equipo retiró la carpeta de pruebas porque su implementación resultó complicada, y se podrá retomar más adelante. `ProyectoBD.csproj` sigue excluyendo `Backend/tests/**` de la compilación, por si se vuelve a crear.
 
 ## Pendiente respecto al enunciado
 
 Funcionalidades que el enunciado pide y todavía no están (o no están completas):
 
-1. **Bitácora de ingreso y salida.** No existe tabla ni código. Debe guardar usuario, fecha y hora de entrada y de salida, y registrarse en el login y el logout.
-2. **Sesión y cierre de sesión.** `AutenticacionService.Login` devuelve el usuario, pero no hay sesión ni `Logout`. Lo necesita la bitácora.
+1. **Tabla `bitacora` en `BDproyecto.sql`.** El código de la bitácora ya está hecho, pero falta la tabla (ver [Bitácora](#bitácora-de-entrada-y-salida)); sin ella el login falla.
+2. **Sesión.** `Login` devuelve el usuario y `Logout` cierra la sesión en la bitácora, pero no hay un objeto de sesión; la interfaz deberá recordar al usuario autenticado y llamar a `Logout` al salir.
 3. **Gestión de categorías.** Existe la tabla y el enum, pero no hay modelo, DAO ni servicio para crear, consultar, actualizar o eliminar categorías y sus datos básicos.
 4. **Actualizar productos.** `ProductoService` no tiene operación de actualización; `ProductoDAO.Actualizar` existe pero ningún servicio la expone.
 5. **Más búsquedas para el usuario esporádico.** `ConsultaService` ya filtra ofertas por categoría, ciudad y rango de precio; falta buscar productos por nombre.
@@ -280,7 +311,7 @@ Funcionalidades que el enunciado pide y todavía no están (o no están completa
 7. **Un solo administrador a nivel de base de datos.** Hoy solo lo impide el servicio; la tabla no lo garantiza.
 8. **`productosofertados` sin llave primaria** `(proveedorid, producto)`: la base permite ofertas repetidas.
 9. **Interfaz de usuario.** Menú de consola o API web con login, y un `Program.cs` que arme los servicios.
-10. **Pruebas automatizadas** (ver la sección anterior).
+10. **Pruebas automatizadas** (descartadas por ahora; ver la sección anterior).
 11. **Mostrar los resultados de las consultas.** Los métodos devuelven los datos, pero no hay menú ni pantalla que los muestre. Además, `productosofertados` no trae datos iniciales, así que las consultas devuelven vacío hasta que se carguen ofertas.
 
 Mejoras técnicas que se dejaron anotadas: longitudes de columna cortas sin validar en el modelo (`correo` 25, `telefono` 10, `nombreempresa` 20), manejo de errores de MySQL solo en `UsuarioDAO`, y renombrar `ProveedorService` y `AutenticacionService` para que coincidan con sus archivos.
