@@ -6,7 +6,7 @@ using BCrypt.Net;
 /// El hash de la contraseña nunca vive en la entidad Usuario; solo se lee del DAO
 /// en el momento de verificarlo.
 /// </summary>
-public class AutenticacionService
+public class AutentificacionService
 {
     private readonly IUsuarioDAO _usuarioDao;
     private readonly IBitacoraDAO _bitacoraDao;
@@ -15,7 +15,7 @@ public class AutenticacionService
     private static readonly string HashFalso =
         BCrypt.Net.BCrypt.HashPassword("contrasena-falsa-para-igualar-tiempos");
 
-    public AutenticacionService(IUsuarioDAO usuarioDao, IBitacoraDAO bitacoraDao)
+    public AutentificacionService(IUsuarioDAO usuarioDao, IBitacoraDAO bitacoraDao)
     {
         _usuarioDao = usuarioDao;
         _bitacoraDao = bitacoraDao;

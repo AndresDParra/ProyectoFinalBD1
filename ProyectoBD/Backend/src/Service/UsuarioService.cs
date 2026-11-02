@@ -51,7 +51,7 @@ public class UsuarioService
         }
 
         // validar la contraseña antes de crear el usuario y luego se hashea
-        AutenticacionService.ValidarContrasenaNueva(contrasena);
+        AutentificacionService.ValidarContrasenaNueva(contrasena);
         string hash = BCrypt.Net.BCrypt.HashPassword(contrasena);
 
         return _usuarioDAO.CrearUsuario(usuario, hash);
