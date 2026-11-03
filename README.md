@@ -14,6 +14,18 @@ Las diversas empresas de carácter comercial requieren de sistemas de informaci�
 
 La aplicación deberá contar con un sistema básico de seguridad que consiste en un login de usuarios. Habrán tres tipos de usuarios: El Administrador (solo 1), los usuarios tradicionales y los usuarios esporádicos. Solo el Administrador puede crear nuevos usuarios. Los usuarios tradicionales pueden ejecutar los CRUD para la gestión de datos. Los usuarios esporádicos solo podrán ejecutar las consultas. También, se contará con una Bitácora que almacenará los datos del ingreso y la salida de los usuarios del sistema (fechas y horas de entrada y salida).
 
+### Consultas y reportes mínimos que debe tener la aplicación
+
+**Consultas**
+
+- Se deben crear tres consultas con JOIN que junten al menos, datos de 3 tablas.
+- Se deben construir y mostrar los datos arrojados por dos consultas que posean subconsultas y que relacionen dos tablas.
+
+**Reportes** (archivo en .pdf o en una herramienta de reportes mostrado dentro de un formulario en la aplicación)
+
+- Se deben tener en reportes (TRES diferentes) los datos filtrados por el usuario, de productos y proveedores.
+- Se deben tener dos reportes que relacionen los Productos con sus Categorías y que los pueda filtrar el usuario.
+
 ### Cómo se traduce el enunciado al proyecto
 
 | Concepto del enunciado | En el proyecto |
@@ -36,7 +48,7 @@ El backend está implementado como una biblioteca de clases dentro de un proyect
 - Servicios con las reglas de negocio, la autenticación (login con bcrypt) y la autorización por rol.
 - Un script SQL (`BDproyecto.sql`) con el esquema y datos iniciales.
 
-**El proyecto todavía no tiene interfaz.** [Program.cs](ProyectoBD/Program.cs) solo imprime `Hello, World!`; los servicios se pueden usar desde código pero ningún flujo los invoca.
+**El proyecto todavía no tiene interfaz gráfica.** [Program.cs](ProyectoBD/Program.cs) sin argumentos solo imprime `Hello, World!`, pero tiene un **modo de demostración** para ver las consultas en la consola y generar los reportes en PDF (ver [Modo de demostración](#modo-de-demostración)). El resto de los servicios se pueden usar desde código.
 
 ## Estructura de carpetas
 
@@ -46,10 +58,12 @@ ProyectoFinalBD1/
 ├── README.md
 ├── He gawn                             # Archivo suelto sin uso en el código
 └── ProyectoBD/
-    ├── Program.cs                      # Punto de entrada actual (solo "Hello, World!")
+    ├── Program.cs                      # Punto de entrada: "Hello, World!" o modo de demostración
     ├── ProyectoBD.csproj               # .NET 10; paquetes MySql.Data y BCrypt.Net-Next
     └── Backend/
         └── src/
+            ├── Demo/
+            │   └── Demostracion.cs     # Modo de demostración: consultas en consola y reportes en PDF
             ├── Model/                  # Entidades y reglas de dominio
             │   ├── Usuario.cs
             │   ├── RolUsuario.cs
@@ -60,6 +74,7 @@ ProyectoFinalBD1/
             │   │   └── CategoriaProducto.cs
             │   └── Consulta/           # Resultados de las consultas combinadas
             │       ├── OfertaDetalle.cs
+            │       ├── ProductoCategoria.cs
             │       ├── ResumenCategoria.cs
             │       └── PortafolioProveedor.cs
             ├── Data/                   # Acceso a MySQL
@@ -79,6 +94,10 @@ ProyectoFinalBD1/
                 ├── ProductoOfertadoService.cs   # contiene la clase ProveedorService
                 ├── ConsultaService.cs
                 ├── BitacoraService.cs
+                ├── Report/             # Reportes en PDF (QuestPDF)
+                │   ├── ReporteService.cs
+                │   ├── GeneradorPdf.cs
+                │   └── ColumnaReporte.cs
                 └── exception/          # Excepciones de las reglas de negocio
 ```
 
@@ -142,6 +161,58 @@ Reglas del administrador implementadas en `UsuarioService`:
 ### `BitacoraService`
 - `ConsultarBitacora(idSolicitante, idUsuario?, desde?, hasta?)`: lista las sesiones (de la más reciente a la más antigua) con filtros opcionales por usuario y por rango de fechas de entrada. **Solo el Administrador** puede ejecutarla.
 
+### `ReporteService`
+Genera los reportes en PDF con [QuestPDF](https://www.questpdf.com) (licencia Community). Cualquier usuario puede generarlos, y todos los filtros son opcionales: un filtro vacío no se aplica. Cada método devuelve el PDF como `byte[]`, para que quien lo pida decida si lo guarda en un archivo o lo muestra.
+
+El flujo es el mismo para todos los reportes: `ReporteService` valida los filtros, pide los datos a `ConsultaDAO`, los convierte a texto y se los pasa a `GeneradorPdf`, que es la única clase que conoce QuestPDF y dibuja el PDF (título, fecha de generación, filtros aplicados, total de registros, tabla con el encabezado repetido en cada página, número de página y un aviso cuando no hay resultados). Agregar un reporte consiste en dar formato a las filas y definir sus columnas en `ReporteService`.
+
+#### Qué reportes hay y por qué
+
+El enunciado pide cinco reportes: **tres de productos y proveedores** y **dos que relacionen productos con sus categorías**, todos filtrados por el usuario. Se eligieron de modo que cada uno responda una pregunta distinta del negocio y que, en conjunto, recorran las cuatro tablas del dominio (`usuario` como proveedor, `producto`, `categoria` y `productosofertados`).
+
+**Regla de diseño: una consulta, una sola fuente.** Los reportes no tienen SQL propio: reutilizan las consultas de `ConsultaDAO` (las mismas de las pantallas de consulta) a las que se les agregan filtros opcionales. Así un cambio en una consulta se refleja en su reporte, y no hay dos versiones del mismo SQL que mantener. Solo el reporte 4 necesitó una consulta nueva (`ConsultarProductosPorCategoria`), porque ningún DAO tenía un listado de productos.
+
+Se descartaron para los reportes los métodos de `UsuarioDAO`, `ProductoDAO` y `ProductoOfertadoDAO`: piden un id obligatorio o filtran por un único criterio, devuelven pocos datos (por ejemplo, el proveedor solo como número) y no traen los nombres de categoría y proveedor que necesita un reporte legible. Las consultas de `ConsultaDAO` ya cruzan esas tablas.
+
+| # | Reporte | Grupo del enunciado | Fuente | Estado |
+| --- | --- | --- | --- | --- |
+| 1 | Proveedores y su portafolio | Productos y proveedores | `ConsultarPortafolioProveedores` | Hecho |
+| 2 | Ofertas de los proveedores | Productos y proveedores | `ConsultarCatalogoOfertas` | Hecho |
+| 3 | Productos y su mejor proveedor | Productos y proveedores | `ConsultarMejorOfertaPorProducto` | Hecho |
+| 4 | Productos por categoría | Productos con categorías | `ConsultarProductosPorCategoria` (nueva) | Hecho |
+| 5 | Resumen por categoría | Productos con categorías | `ConsultarResumenPorCategoria` | Hecho |
+
+Métodos de `ReporteService`: `GenerarReporteProveedoresPortafolio` (1), `GenerarReporteOfertasPorProveedor` (2), `GenerarReporteMejorProveedorPorProducto` (3), `GenerarReporteProductosPorCategoria` (4) y `GenerarReporteResumenPorCategoria` (5). Todos devuelven `byte[]` y sus parámetros son los filtros opcionales de cada reporte.
+
+**Reporte 1: Proveedores y su portafolio** (`GenerarReporteProveedoresPortafolio`)
+- **Finalidad:** el enunciado exige almacenar los datos de los proveedores, que pueden estar en cualquier ciudad, y que un proveedor pueda proveer varios productos. Este reporte muestra cada proveedor con su empresa, ciudad y qué tan amplia es su oferta.
+- **Tablas y cómo:** `usuario` (solo rol Proveedor), `productosofertados` y `producto`, unidas con `LEFT JOIN` para que también aparezcan los proveedores que todavía no ofrecen nada. Una fila por proveedor con la cantidad de productos y de categorías distintas, y el precio y el tiempo de entrega promedio.
+- **Filtros:** ciudad y empresa.
+
+**Reporte 2: Ofertas de los proveedores** (`GenerarReporteOfertasPorProveedor`)
+- **Finalidad:** responde a "qué productos puede enviar cada proveedor" y refleja que un producto puede adquirirse de varios proveedores. Es el detalle que usaría quien debe elegir a quién hacer un pedido.
+- **Tablas y cómo:** `productosofertados`, `producto`, `categoria` y `usuario`. Una fila por oferta con proveedor, empresa, ciudad, producto, categoría, precio y tiempo de entrega, agrupadas por proveedor.
+- **Filtros:** proveedor (id), ciudad, empresa y nombre del producto (coincidencia parcial).
+- **Fuente:** `ConsultarCatalogoOfertas`, ordenada por precio para la consulta y reordenada por proveedor en el reporte.
+
+**Reporte 3: Productos y su mejor proveedor** (`GenerarReporteMejorProveedorPorProducto`)
+- **Finalidad:** el objetivo del sistema es "determinar los proveedores a los que se pueden realizar los pedidos". Este reporte indica, para cada producto, el proveedor que lo ofrece al menor precio.
+- **Tablas y cómo:** las mismas cuatro del reporte 2, más una subconsulta que calcula el precio mínimo de cada producto. Si dos proveedores empatan, salen ambos.
+- **Filtros:** nombre del producto (coincidencia parcial) y ciudad. Con ciudad, el usuario elige cómo se interpreta (parámetro `soloProveedoresDeLaCiudad`, `true` por defecto):
+  - **Mejor dentro de la ciudad** (`true`): la mejor oferta se calcula entre los proveedores de esa ciudad, es decir, "el más barato de Pereira" para cada producto que se ofrezca allí.
+  - **Mejor global** (`false`): la mejor oferta se calcula entre todos los proveedores y la ciudad solo filtra el resultado, es decir, "los productos cuyo proveedor más barato es de Pereira". Puede no salir ningún producto.
+  - Sin ciudad, las dos formas dan lo mismo. El PDF indica en el encabezado cuál se usó.
+
+**Reporte 4: Productos por categoría** (`GenerarReporteProductosPorCategoria`)
+- **Finalidad:** el enunciado dice que las categorías identifican las "familias de productos". Este reporte lista los productos agrupados por su familia.
+- **Tablas y cómo:** `producto` y `categoria`. Una fila por producto con su categoría y su descripción. Es la única consulta nueva (`ConsultarProductosPorCategoria`), porque los DAO no tenían un listado de productos. También se expone como consulta en `ConsultaService`.
+- **Filtros:** categoría y nombre del producto.
+
+**Reporte 5: Resumen por categoría** (`GenerarReporteResumenPorCategoria`)
+- **Finalidad:** el enunciado también pide almacenar los datos básicos de las categorías. Este reporte da una vista de cada familia: cuántos productos tiene, cuántas ofertas y en qué rango de precios.
+- **Tablas y cómo:** `categoria`, `producto` y `productosofertados`, con `LEFT JOIN`: aparecen todas las categorías, aunque no tengan productos u ofertas.
+- **Filtros:** categoría.
+
 ### `ConsultaService`
 Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualquier usuario, sin validación de rol; el DAO es `ConsultaDAO`.
 
@@ -161,7 +232,7 @@ Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualqui
 | `ProductoDAO` | Crear, consultar por id, actualizar, eliminar y comprobar existencia |
 | `ProductoOfertadoDAO` | Crear (valida proveedor y producto en una transacción), actualizar precio, consultar por proveedor o por producto, comprobar existencia y eliminar |
 | `BitacoraDAO` | Registrar entrada, registrar salida y consultar la bitácora con filtros opcionales |
-| `ConsultaDAO` | Las cinco consultas con JOIN y subconsultas descritas en `ConsultaService`; no pertenecen a una sola entidad, por eso están separadas |
+| `ConsultaDAO` | Las cinco consultas con JOIN y subconsultas descritas en `ConsultaService`, y es la fuente de los reportes (reutilizan sus consultas con filtros opcionales); no pertenecen a una sola entidad, por eso están separadas |
 
 Detalles de implementación:
 - **Categorías:** `categoria.Cacodigo` empieza en 1 y el enum `CategoriaProducto` en 0, por lo que `ProductoDAO` suma 1 al guardar y resta 1 al leer.
@@ -284,7 +355,7 @@ Notas:
    dotnet run
    ```
 
-   Por ahora solo imprime `Hello, World!`: el proyecto compila, pero no hay menú ni flujo interactivo. Para usar los servicios hay que crear los DAO y servicios desde código, por ejemplo:
+   Sin argumentos solo imprime `Hello, World!` y la ayuda del modo de demostración. No hay menú ni flujo interactivo: para usar los servicios hay que crear los DAO y servicios desde código, por ejemplo:
 
    ```csharp
    var usuarioDao = new UsuarioDAO();
@@ -292,7 +363,21 @@ Notas:
    Usuario admin = autenticacion.Login("s@email.com", "Admin12345");
    ```
 
-`Program.cs` no llama a `Conexion.ProbarAsync()`, por lo que un error de configuración solo aparece cuando un DAO abre su primera conexión.
+El modo de demostración sí comprueba la conexión con `Conexion.ProbarAsync()` antes de empezar; en el resto del código, un error de configuración solo aparece cuando un DAO abre su primera conexión.
+
+### Modo de demostración
+
+Mientras no exista la interfaz gráfica, `Program.cs` permite ver el backend funcionando. Desde la carpeta `ProyectoBD`:
+
+```bash
+dotnet run -- consultas            # imprime en la consola las consultas con JOIN y con subconsultas
+dotnet run -- reportes [carpeta]   # genera los reportes en PDF (por defecto en la carpeta temporal del sistema)
+```
+
+- **`consultas`** imprime las cinco consultas que pide el enunciado (tres con JOIN y dos con subconsulta) más el listado de productos por categoría, cada una con las tablas que usa y su número de filas.
+- **`reportes`** genera 11 PDF: los cinco reportes, varios de ellos con y sin filtros, para comprobar que los filtros cambian el resultado. Imprime la carpeta y el nombre de cada archivo; ábrelos con el visor de PDF del sistema (por ejemplo `xdg-open <carpeta>`).
+- Si la conexión falla o faltan las tablas, muestran un mensaje claro y terminan con código 1.
+- **Datos de ejemplo:** `BDproyecto.sql` no trae ofertas, así que sin cargarlas la mayoría de las consultas y reportes salen vacíos (el programa avisa). Para probar, inserta ofertas en tu base local, sin modificar el `.sql`. La lógica de este modo está en [Demostracion.cs](ProyectoBD/Backend/src/Demo/Demostracion.cs); no tiene lógica de negocio y se puede borrar cuando exista la interfaz.
 
 ## Pruebas
 
@@ -306,12 +391,13 @@ Funcionalidades que el enunciado pide y todavía no están (o no están completa
 2. **Sesión.** `Login` devuelve el usuario y `Logout` cierra la sesión en la bitácora, pero no hay un objeto de sesión; la interfaz deberá recordar al usuario autenticado y llamar a `Logout` al salir.
 3. **Gestión de categorías.** Existe la tabla y el enum, pero no hay modelo, DAO ni servicio para crear, consultar, actualizar o eliminar categorías y sus datos básicos.
 4. **Actualizar productos.** `ProductoService` no tiene operación de actualización; `ProductoDAO.Actualizar` existe pero ningún servicio la expone.
-5. **Más búsquedas para el usuario esporádico.** `ConsultaService` ya filtra ofertas por categoría, ciudad y rango de precio; falta buscar productos por nombre.
+5. **Más búsquedas para el usuario esporádico.** `ConsultaService` ya filtra ofertas por categoría, ciudad y rango de precio, y `ConsultarProductosPorCategoria` busca productos por categoría y por nombre. Faltaría, a lo sumo, exponer los filtros nuevos del catálogo (proveedor, empresa y nombre del producto), que hoy solo usa el reporte 2.
 6. **Proveedores de cualquier ciudad de Colombia.** La ciudad es texto libre, sin validación ni catálogo de ciudades.
 7. **Un solo administrador a nivel de base de datos.** Hoy solo lo impide el servicio; la tabla no lo garantiza.
 8. **`productosofertados` sin llave primaria** `(proveedorid, producto)`: la base permite ofertas repetidas.
 9. **Interfaz de usuario.** Menú de consola o API web con login, y un `Program.cs` que arme los servicios.
 10. **Pruebas automatizadas** (descartadas por ahora; ver la sección anterior).
-11. **Mostrar los resultados de las consultas.** Los métodos devuelven los datos, pero no hay menú ni pantalla que los muestre. Además, `productosofertados` no trae datos iniciales, así que las consultas devuelven vacío hasta que se carguen ofertas.
+11. **Mostrar los resultados de las consultas en la interfaz.** El modo de demostración las imprime en consola, pero no hay pantalla de la aplicación que las muestre. Además, `productosofertados` no trae datos iniciales, así que las consultas devuelven vacío hasta que se carguen ofertas.
+12. **Mostrar los reportes en la interfaz.** Los cinco reportes están generados y verificados, y el modo de demostración los guarda como PDF, pero `ReporteService` solo devuelve los bytes: falta la interfaz que los guarde o los muestre, con los filtros que elija el usuario.
 
 Mejoras técnicas que se dejaron anotadas: longitudes de columna cortas sin validar en el modelo (`correo` 25, `telefono` 10, `nombreempresa` 20), manejo de errores de MySQL solo en `UsuarioDAO`, y renombrar `ProveedorService` y `AutenticacionService` para que coincidan con sus archivos.

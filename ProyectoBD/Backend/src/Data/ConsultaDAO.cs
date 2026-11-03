@@ -4,7 +4,9 @@ using MySql.Data.MySqlClient;
 /// <summary>
 /// Consultas de lectura que combinan varias tablas. Tres usan JOIN (catálogo de ofertas,
 /// resumen por categoría y portafolio de proveedores) y dos usan subconsultas
-/// (mejor oferta por producto y productos sin oferta).
+/// (mejor oferta por producto y productos sin oferta). Los reportes en PDF (<see cref="ReporteService"/>)
+/// reutilizan estas mismas consultas, por eso admiten filtros opcionales: así una consulta y su reporte
+/// salen de un único SQL y no hay que mantener dos versiones.
 /// </summary>
 public class ConsultaDAO : IConsultaDAO
 {
@@ -88,10 +90,13 @@ public class ConsultaDAO : IConsultaDAO
 
     /// <summary>
     /// JOIN de cuatro tablas (productosofertados, producto, categoria y usuario).
-    /// Todos los filtros son opcionales: un filtro null no se aplica.
+    /// Todos los filtros son opcionales: un filtro null no se aplica, y los demás se combinan con AND.
+    /// El nombre del producto se busca por coincidencia parcial (LIKE). Se ordena por precio, que es lo que
+    /// necesita quien compara ofertas; el reporte de ofertas por proveedor lo reordena por proveedor.
     /// </summary>
     public List<OfertaDetalle> ConsultarCatalogoOfertas(
-        string? categoria, string? ciudad, decimal? precioMinimo, decimal? precioMaximo)
+        string? categoria, string? ciudad, decimal? precioMinimo, decimal? precioMaximo,
+        int? idProveedor, string? nombreEmpresa, string? nombreProducto)
     {
         const string sql = $"""
             {SelectOfertaDetalle}
@@ -99,6 +104,9 @@ public class ConsultaDAO : IConsultaDAO
               AND (@ciudad IS NULL OR u.ciudad = @ciudad)
               AND (@precioMinimo IS NULL OR po.precio >= @precioMinimo)
               AND (@precioMaximo IS NULL OR po.precio <= @precioMaximo)
+              AND (@idProveedor IS NULL OR po.proveedorid = @idProveedor)
+              AND (@nombreEmpresa IS NULL OR u.nombreempresa = @nombreEmpresa)
+              AND (@nombreProducto IS NULL OR p.nombre LIKE CONCAT('%', @nombreProducto, '%'))
             ORDER BY po.precio, po.proveedorid, p.Prid;
             """;
 
@@ -109,6 +117,9 @@ public class ConsultaDAO : IConsultaDAO
                 comando.Parameters.AddWithValue("@ciudad", (object?)ciudad ?? DBNull.Value);
                 comando.Parameters.AddWithValue("@precioMinimo", (object?)precioMinimo ?? DBNull.Value);
                 comando.Parameters.AddWithValue("@precioMaximo", (object?)precioMaximo ?? DBNull.Value);
+                comando.Parameters.AddWithValue("@idProveedor", (object?)idProveedor ?? DBNull.Value);
+                comando.Parameters.AddWithValue("@nombreEmpresa", (object?)nombreEmpresa ?? DBNull.Value);
+                comando.Parameters.AddWithValue("@nombreProducto", (object?)nombreProducto ?? DBNull.Value);
             },
             MapearOfertaDetalle);
     }
@@ -116,8 +127,10 @@ public class ConsultaDAO : IConsultaDAO
     /// <summary>
     /// JOIN de tres tablas (categoria, producto y productosofertados). Los LEFT JOIN hacen que
     /// también aparezcan las categorías sin productos y los productos sin ofertas.
+    /// El filtro de categoría es opcional: null devuelve todas. Se aplica a la tabla categoria
+    /// antes de agrupar, así que no altera los cálculos de la categoría elegida.
     /// </summary>
-    public List<ResumenCategoria> ConsultarResumenPorCategoria()
+    public List<ResumenCategoria> ConsultarResumenPorCategoria(string? categoria)
     {
         const string sql = """
             SELECT c.nombre AS categoria,
@@ -129,12 +142,15 @@ public class ConsultaDAO : IConsultaDAO
             FROM categoria c
             LEFT JOIN producto p ON p.categoria = c.Cacodigo
             LEFT JOIN productosofertados po ON po.producto = p.Prid
+            WHERE (@categoria IS NULL OR c.nombre = @categoria)
             GROUP BY c.Cacodigo, c.nombre
             ORDER BY c.Cacodigo;
             """;
 
         // COUNT devuelve BIGINT en MySQL, por eso se lee con GetInt64 y se convierte a int
-        return Consultar(sql, _ => { }, lector => new ResumenCategoria(
+        return Consultar(sql,
+            comando => comando.Parameters.AddWithValue("@categoria", (object?)categoria ?? DBNull.Value),
+            lector => new ResumenCategoria(
             lector.GetString("categoria"),
             (int)lector.GetInt64("productos"),
             (int)lector.GetInt64("ofertas"),
@@ -146,8 +162,9 @@ public class ConsultaDAO : IConsultaDAO
     /// <summary>
     /// JOIN de tres tablas (usuario, productosofertados y producto) con los proveedores
     /// y sus ofertas. El LEFT JOIN conserva a los proveedores que todavía no ofrecen nada.
+    /// Los filtros de ciudad y empresa son opcionales: un filtro null no se aplica.
     /// </summary>
-    public List<PortafolioProveedor> ConsultarPortafolioProveedores()
+    public List<PortafolioProveedor> ConsultarPortafolioProveedores(string? ciudad, string? nombreEmpresa)
     {
         const string sql = """
             SELECT u.idusuario,
@@ -162,12 +179,19 @@ public class ConsultaDAO : IConsultaDAO
             LEFT JOIN productosofertados po ON po.proveedorid = u.idusuario
             LEFT JOIN producto p ON p.Prid = po.producto
             WHERE u.rolusuario = @rolProveedor
+              AND (@ciudad IS NULL OR u.ciudad = @ciudad)
+              AND (@nombreEmpresa IS NULL OR u.nombreempresa = @nombreEmpresa)
             GROUP BY u.idusuario, u.nombre, u.nombreempresa, u.ciudad
             ORDER BY productos DESC, u.idusuario;
             """;
 
         return Consultar(sql,
-            comando => comando.Parameters.AddWithValue("@rolProveedor", (int)RolUsuario.Proveedor),
+            comando =>
+            {
+                comando.Parameters.AddWithValue("@rolProveedor", (int)RolUsuario.Proveedor);
+                comando.Parameters.AddWithValue("@ciudad", (object?)ciudad ?? DBNull.Value);
+                comando.Parameters.AddWithValue("@nombreEmpresa", (object?)nombreEmpresa ?? DBNull.Value);
+            },
             lector =>
             {
                 int posEmpresa = lector.GetOrdinal("nombreempresa");
@@ -188,20 +212,79 @@ public class ConsultaDAO : IConsultaDAO
     /// <summary>
     /// Subconsulta correlacionada: de cada producto devuelve la oferta (o las ofertas, si hay empate)
     /// cuyo precio es igual al mínimo precio ofrecido para ese mismo producto.
+    /// Los filtros son opcionales. El nombre del producto se busca por coincidencia parcial.
+    ///
+    /// La ciudad se puede usar de dos maneras, y <paramref name="mejorSoloEntreLaCiudad"/> elige cuál:
+    /// - true: "mejor" es la mejor oferta entre los proveedores de esa ciudad. Aparece cada producto que algún
+    ///   proveedor de la ciudad ofrece, con el más barato de ellos.
+    /// - false: "mejor" es la mejor oferta entre todos los proveedores, y la ciudad solo filtra el resultado. Aparecen
+    ///   únicamente los productos cuya mejor oferta global es de un proveedor de esa ciudad (puede no salir ninguno).
+    /// Sin ciudad, las dos formas dan el mismo resultado.
     /// </summary>
-    public List<OfertaDetalle> ConsultarMejorOfertaPorProducto()
+    public List<OfertaDetalle> ConsultarMejorOfertaPorProducto(
+        string? nombreProducto, string? ciudad, bool mejorSoloEntreLaCiudad)
     {
         const string sql = $"""
             {SelectOfertaDetalle}
             WHERE po.precio = (
                 SELECT MIN(menor.precio)
                 FROM productosofertados menor
+                INNER JOIN usuario proveedor ON proveedor.idusuario = menor.proveedorid
                 WHERE menor.producto = po.producto
+                  AND (@ciudadParaMinimo IS NULL OR proveedor.ciudad = @ciudadParaMinimo)
             )
+              AND (@ciudad IS NULL OR u.ciudad = @ciudad)
+              AND (@nombreProducto IS NULL OR p.nombre LIKE CONCAT('%', @nombreProducto, '%'))
             ORDER BY p.Prid, po.proveedorid;
             """;
 
-        return Consultar(sql, _ => { }, MapearOfertaDetalle);
+        return Consultar(sql,
+            comando =>
+            {
+                comando.Parameters.AddWithValue("@nombreProducto", (object?)nombreProducto ?? DBNull.Value);
+                comando.Parameters.AddWithValue("@ciudad", (object?)ciudad ?? DBNull.Value);
+                // la subconsulta solo se limita a la ciudad si se pidió calcular la mejor oferta dentro de ella
+                comando.Parameters.AddWithValue("@ciudadParaMinimo",
+                    mejorSoloEntreLaCiudad ? (object?)ciudad ?? DBNull.Value : DBNull.Value);
+            },
+            MapearOfertaDetalle);
+    }
+
+    /// <summary>
+    /// JOIN de producto y categoria: los productos con el nombre de su categoría. Los filtros son opcionales:
+    /// categoría (nombre exacto) y nombre del producto (coincidencia parcial). Es la consulta que faltaba: ningún
+    /// DAO por entidad tenía un listado de productos.
+    /// </summary>
+    public List<ProductoCategoria> ConsultarProductosPorCategoria(string? categoria, string? nombreProducto)
+    {
+        const string sql = """
+            SELECT p.Prid,
+                   p.nombre AS producto,
+                   p.descripcion,
+                   c.nombre AS categoria
+            FROM producto p
+            INNER JOIN categoria c ON c.Cacodigo = p.categoria
+            WHERE (@categoria IS NULL OR c.nombre = @categoria)
+              AND (@nombreProducto IS NULL OR p.nombre LIKE CONCAT('%', @nombreProducto, '%'))
+            ORDER BY c.Cacodigo, p.nombre, p.Prid;
+            """;
+
+        return Consultar(sql,
+            comando =>
+            {
+                comando.Parameters.AddWithValue("@categoria", (object?)categoria ?? DBNull.Value);
+                comando.Parameters.AddWithValue("@nombreProducto", (object?)nombreProducto ?? DBNull.Value);
+            },
+            lector =>
+            {
+                int posDescripcion = lector.GetOrdinal("descripcion");
+
+                return new ProductoCategoria(
+                    lector.GetInt32("Prid"),
+                    lector.GetString("producto"),
+                    lector.IsDBNull(posDescripcion) ? null : lector.GetString(posDescripcion),
+                    lector.GetString("categoria"));
+            });
     }
 
     /// <summary>

@@ -5,6 +5,8 @@
 /// productosofertados): sirve para ver cómo está cada "familia de productos", cuántos productos tiene, cuántas
 /// ofertas y qué rango de precios. Como usa LEFT JOIN, siempre aparecen todas las categorías, aunque no tengan
 /// productos u ofertas; en ese caso los tres precios son null y Ofertas vale 0. Sale ordenada por código de categoría.
+/// Su único filtro, opcional, es la categoría. Es también la fuente del reporte "Resumen por categoría"
+/// (<see cref="ReporteService"/>).
 /// </summary>
 public record ResumenCategoria(
     string Categoria,
