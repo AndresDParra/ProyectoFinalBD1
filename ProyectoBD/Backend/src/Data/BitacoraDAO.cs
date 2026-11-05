@@ -76,7 +76,8 @@ public class BitacoraDAO : IBitacoraDAO
 
     /// <summary>
     /// Devuelve las sesiones, de la más reciente a la más antigua. Los filtros son opcionales y se combinan:
-    /// el rango de fechas se aplica a la fecha de entrada. Usa LEFT JOIN para que sigan apareciendo las sesiones
+    /// el rango de fechas se aplica a la fecha de entrada; si <paramref name="hasta"/> no trae hora (medianoche)
+    /// se entiende como ese día completo. Usa LEFT JOIN para que sigan apareciendo las sesiones
     /// de usuarios eliminados, que quedaron con idusuario en NULL.
     /// </summary>
     public List<RegistroBitacora> Consultar(int? idUsuario, DateTime? desde, DateTime? hasta)
@@ -94,6 +95,10 @@ public class BitacoraDAO : IBitacoraDAO
               AND (@hasta IS NULL OR b.fechaentrada <= @hasta)
             ORDER BY b.fechaentrada DESC, b.idbitacora DESC;
             """;
+
+        // una fecha sin hora (00:00) dejaría fuera casi todo ese día, así que se lleva a su último segundo
+        if (hasta is { TimeOfDay.Ticks: 0 } soloFecha)
+            hasta = soloFecha.AddDays(1).AddSeconds(-1);
 
         try
         {

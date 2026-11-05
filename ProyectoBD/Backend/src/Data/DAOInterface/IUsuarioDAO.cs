@@ -36,6 +36,11 @@ public interface IUsuarioDAO
     /// </summary>
 
     bool CrearUsuario(Usuario usuario, string contrasenaHash);
+
+    /// <summary>
+    /// Igual que <see cref="CrearUsuario(Usuario, string)"/>, pero devuelve el ID que asignó la base de datos.
+    /// </summary>
+    bool CrearUsuario(Usuario usuario, string contrasenaHash, out int idGenerado);
     void ActualizarContrasena(int id, string contrasenaNuevaHash);
     bool EliminarUsuario(int id);
 

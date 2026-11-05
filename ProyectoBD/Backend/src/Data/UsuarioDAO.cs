@@ -9,6 +9,11 @@ public class UsuarioDAO : IUsuarioDAO
     /// que se necesitan para mapear un objeto Usuario, ademas de servir como apoyo para metodos de consultas
     /// </summary>
 
+    /// <summary>
+    /// Código de MySQL para "no se puede borrar o actualizar una fila padre: falla una restricción de clave foránea".
+    /// </summary>
+    private const int ErrorFilaReferenciada = 1451;
+
     private const string ColumnasUsuario = """
         u.idusuario,
         u.nombre,
@@ -289,15 +294,23 @@ public class UsuarioDAO : IUsuarioDAO
     ///  metodos para gestionar Usuario
     /// </summary>
 
-    public bool CrearUsuario(Usuario usuario, string contrasenaHash)
+    public bool CrearUsuario(Usuario usuario, string contrasenaHash) => CrearUsuario(usuario, contrasenaHash, out _);
+
+    /// <summary>
+    /// Inserta el usuario sin enviar el ID: lo asigna la columna AUTO_INCREMENT y se devuelve en
+    /// <paramref name="idGenerado"/>. El <c>IdUsuario</c> del objeto recibido no se usa.
+    /// </summary>
+    public bool CrearUsuario(Usuario usuario, string contrasenaHash, out int idGenerado)
     {
+        idGenerado = 0;
+
         // nombreempresa y ciudad viven en la tabla usuario; son NULL salvo para los proveedores
         const string sql = """
             INSERT INTO usuario
-                (idusuario, nombre, contrasena, direccion, telefono, cedula, correo,
+                (nombre, contrasena, direccion, telefono, cedula, correo,
                  fechanacimiento, genero, rolusuario, nombreempresa, ciudad)
             VALUES
-                (@idUsuario, @nombre, @contrasena, @direccion, @telefono, @cedula, @correo,
+                (@nombre, @contrasena, @direccion, @telefono, @cedula, @correo,
                  @fechaNacimiento, @genero, @idTipoUsuario, @nombreEmpresa, @ciudad);
             """;
 
@@ -307,7 +320,6 @@ public class UsuarioDAO : IUsuarioDAO
             conexion.Open();
             using var comando = new MySqlCommand(sql, conexion);
 
-            comando.Parameters.AddWithValue("@idUsuario", usuario.IdUsuario);
             comando.Parameters.AddWithValue("@nombre", usuario.Nombre);
             comando.Parameters.AddWithValue("@contrasena", contrasenaHash); // se almacena el hash de la contraseña, no la contraseña en texto plano
             comando.Parameters.AddWithValue("@direccion", usuario.Direccion);
@@ -320,7 +332,11 @@ public class UsuarioDAO : IUsuarioDAO
             comando.Parameters.AddWithValue("@nombreEmpresa", (object?)usuario.NombreEmpresa ?? DBNull.Value);
             comando.Parameters.AddWithValue("@ciudad", (object?)usuario.Ciudad ?? DBNull.Value);
 
-            return comando.ExecuteNonQuery() == 1;
+            if (comando.ExecuteNonQuery() != 1)
+                return false;
+
+            idGenerado = (int)comando.LastInsertedId;
+            return true;
         }
         catch (MySqlException exception)
         {
@@ -398,6 +414,12 @@ public class UsuarioDAO : IUsuarioDAO
 
             transaccion.Commit();
             return true;
+        }
+        catch (MySqlException exception) when (exception.Number == ErrorFilaReferenciada)
+        {
+            // 1451: otra tabla (productosofertados) todavía apunta a este usuario
+            throw new OperacionUsuarioNoPermitidaException(
+                $"No se puede eliminar el usuario {id} porque tiene ofertas registradas. Elimine primero sus ofertas.");
         }
         catch (MySqlException exception)
         {

@@ -18,19 +18,25 @@ public class ProductoDAO : IProductoDAO
 
     internal static CategoriaProducto CodigoACategoria(int codigo) => (CategoriaProducto)(codigo - 1);
 
-    public bool Crear(Producto producto)
+    public bool Crear(Producto producto) => Crear(producto, out _);
+
+    /// <summary>
+    /// Inserta el producto sin enviar el ID: lo asigna la columna AUTO_INCREMENT y se devuelve en
+    /// <paramref name="idGenerado"/>. El <c>IdProducto</c> del objeto recibido no se usa.
+    /// </summary>
+    public bool Crear(Producto producto, out int idGenerado)
     {
         ArgumentNullException.ThrowIfNull(producto);
+        idGenerado = 0;
 
         const string sql = """
-            INSERT INTO producto (Prid, nombre, descripcion, categoria)
-            VALUES (@idProducto, @nombre, @descripcion, @categoria);
+            INSERT INTO producto (nombre, descripcion, categoria)
+            VALUES (@nombre, @descripcion, @categoria);
             """;
 
         using var conexion = Conexion.Obtener();
         using var comando = new MySqlCommand(sql, conexion);
 
-        comando.Parameters.AddWithValue("@idProducto", producto.IdProducto);
         comando.Parameters.AddWithValue("@nombre", producto.Nombre);
         comando.Parameters.AddWithValue("@descripcion", producto.Descripcion);
         ///<summary>
@@ -39,7 +45,11 @@ public class ProductoDAO : IProductoDAO
         comando.Parameters.AddWithValue("@categoria", CategoriaACodigo(producto.Categoria));
 
         conexion.Open();
-        return comando.ExecuteNonQuery() == 1;
+        if (comando.ExecuteNonQuery() != 1)
+            return false;
+
+        idGenerado = (int)comando.LastInsertedId;
+        return true;
     }
 
     public Producto ConsultarId(int idProducto)

@@ -10,6 +10,11 @@ using System.Collections.Generic;
 public interface IProductoDAO
 {
     bool Crear(Producto producto);
+
+    /// <summary>
+    /// Igual que <see cref="Crear(Producto)"/>, pero devuelve el ID que asignó la base de datos.
+    /// </summary>
+    bool Crear(Producto producto, out int idGenerado);
     Producto ConsultarId(int idProducto);
 
     bool Actualizar(Producto producto);
