@@ -125,7 +125,7 @@ MySQL     -> esquema definido en BDproyecto.sql
 
 | Rol | Id | Qué puede hacer |
 | --- | --- | --- |
-| Administrador | 1 | Crear, actualizar y eliminar usuarios (`UsuarioService`); crear y eliminar productos (`ProductoService`); consultar la bitácora (`BitacoraService`) |
+| Administrador | 1 | Crear, actualizar y eliminar usuarios (`UsuarioService`); crear y eliminar productos (`ProductoService`); consultar la bitácora (`BitacoraService`) y generar el reporte de bitácora (`ReporteService`) |
 | Proveedor (tradicional) | 2 | Crear y eliminar productos (`ProductoService`); crear, consultar, actualizar el precio y eliminar sus productos ofertados (`ProveedorService`) |
 | Vendedor (esporádico) | 3 | Consultas |
 
@@ -162,7 +162,7 @@ Reglas del administrador implementadas en `UsuarioService`:
 - `ConsultarBitacora(idSolicitante, idUsuario?, desde?, hasta?)`: lista las sesiones (de la más reciente a la más antigua) con filtros opcionales por usuario y por rango de fechas de entrada. **Solo el Administrador** puede ejecutarla.
 
 ### `ReporteService`
-Genera los reportes en PDF con [QuestPDF](https://www.questpdf.com) (licencia Community). Cualquier usuario puede generarlos, y todos los filtros son opcionales: un filtro vacío no se aplica. Cada método devuelve el PDF como `byte[]`, para que quien lo pida decida si lo guarda en un archivo o lo muestra.
+Genera los reportes en PDF con [QuestPDF](https://www.questpdf.com) (licencia Community). Cualquier usuario puede generar los cinco reportes de productos y proveedores; el **reporte de bitácora es solo del Administrador** (ver [Reporte administrativo](#reporte-administrativo-bitácora-de-acceso)). Todos los filtros son opcionales: un filtro vacío no se aplica. Cada método devuelve el PDF como `byte[]`, para que quien lo pida decida si lo guarda en un archivo o lo muestra.
 
 El flujo es el mismo para todos los reportes: `ReporteService` valida los filtros, pide los datos a `ConsultaDAO`, los convierte a texto y se los pasa a `GeneradorPdf`, que es la única clase que conoce QuestPDF y dibuja el PDF (título, fecha de generación, filtros aplicados, total de registros, tabla con el encabezado repetido en cada página, número de página y un aviso cuando no hay resultados). Agregar un reporte consiste en dar formato a las filas y definir sus columnas en `ReporteService`.
 
@@ -182,7 +182,7 @@ Se descartaron para los reportes los métodos de `UsuarioDAO`, `ProductoDAO` y `
 | 4 | Productos por categoría | Productos con categorías | `ConsultarProductosPorCategoria` (nueva) | Hecho |
 | 5 | Resumen por categoría | Productos con categorías | `ConsultarResumenPorCategoria` | Hecho |
 
-Métodos de `ReporteService`: `GenerarReporteProveedoresPortafolio` (1), `GenerarReporteOfertasPorProveedor` (2), `GenerarReporteMejorProveedorPorProducto` (3), `GenerarReporteProductosPorCategoria` (4) y `GenerarReporteResumenPorCategoria` (5). Todos devuelven `byte[]` y sus parámetros son los filtros opcionales de cada reporte.
+Métodos de `ReporteService`: `GenerarReporteProveedoresPortafolio` (1), `GenerarReporteOfertasPorProveedor` (2), `GenerarReporteMejorProveedorPorProducto` (3), `GenerarReporteProductosPorCategoria` (4) y `GenerarReporteResumenPorCategoria` (5). Todos devuelven `byte[]` y sus parámetros son los filtros opcionales de cada reporte. El reporte administrativo, `GenerarReporteBitacora`, se explica aparte.
 
 **Reporte 1: Proveedores y su portafolio** (`GenerarReporteProveedoresPortafolio`)
 - **Finalidad:** el enunciado exige almacenar los datos de los proveedores, que pueden estar en cualquier ciudad, y que un proveedor pueda proveer varios productos. Este reporte muestra cada proveedor con su empresa, ciudad y qué tan amplia es su oferta.
@@ -212,6 +212,17 @@ Métodos de `ReporteService`: `GenerarReporteProveedoresPortafolio` (1), `Genera
 - **Finalidad:** el enunciado también pide almacenar los datos básicos de las categorías. Este reporte da una vista de cada familia: cuántos productos tiene, cuántas ofertas y en qué rango de precios.
 - **Tablas y cómo:** `categoria`, `producto` y `productosofertados`, con `LEFT JOIN`: aparecen todas las categorías, aunque no tengan productos u ofertas.
 - **Filtros:** categoría.
+
+#### Reporte administrativo: bitácora de acceso
+
+Además de los cinco reportes que pide el enunciado, hay un sexto que **solo puede generar un usuario con rol Administrador**: `GenerarReporteBitacora(idSolicitante, idUsuario?, desde?, hasta?)`.
+
+- **Finalidad:** el enunciado pide una bitácora con la entrada y la salida de los usuarios al sistema. Este reporte la entrega en PDF para que el Administrador la revise o la archive: una fila por sesión con el usuario, la fecha y hora de entrada, la de salida y la duración. Las sesiones sin salida se muestran como "No registrada" y las de usuarios eliminados como "(usuario eliminado)".
+- **Permiso:** lo primero que hace el método es llamar a `AutorizacionService.ValidarRol(idSolicitante, RolUsuario.Administrador)`. Si el solicitante es Proveedor, Vendedor o no existe, lanza `UnauthorizedAccessException` y **no consulta la bitácora ni genera nada**; esa validación va antes que la de los filtros. Es el mismo permiso que ya tiene `BitacoraService`, porque es información de auditoría.
+- **Datos:** `BitacoraDAO.Consultar` (LEFT JOIN de `bitacora` y `usuario`), de la sesión más reciente a la más antigua. No tiene SQL propio: sigue la regla de una consulta, una fuente.
+- **Filtros (opcionales):** usuario (id) y rango de fechas sobre la fecha de entrada. Las fechas llevan hora: para incluir un día completo, `hasta` debe ser el final de ese día.
+- **Requisito:** la tabla `bitacora` debe existir en la base (ver [Bitácora de entrada y salida](#bitácora-de-entrada-y-salida)); mientras no esté en `BDproyecto.sql`, este reporte falla con `ErrorDeBaseDeDatos`.
+- **Constructor:** por este reporte, `ReporteService` recibe ahora también un `AutorizacionService` y un `IBitacoraDAO`.
 
 ### `ConsultaService`
 Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualquier usuario, sin validación de rol; el DAO es `ConsultaDAO`.
@@ -375,7 +386,7 @@ dotnet run -- reportes [carpeta]   # genera los reportes en PDF (por defecto en 
 ```
 
 - **`consultas`** imprime las cinco consultas que pide el enunciado (tres con JOIN y dos con subconsulta) más el listado de productos por categoría, cada una con las tablas que usa y su número de filas.
-- **`reportes`** genera 11 PDF: los cinco reportes, varios de ellos con y sin filtros, para comprobar que los filtros cambian el resultado. Imprime la carpeta y el nombre de cada archivo; ábrelos con el visor de PDF del sistema (por ejemplo `xdg-open <carpeta>`).
+- **`reportes`** genera 12 PDF: los cinco reportes, varios de ellos con y sin filtros, para comprobar que los filtros cambian el resultado, y el reporte de bitácora pedido como Administrador (usuario 1 del script). Además comprueba que el Vendedor del script (usuario 3) sea rechazado al pedir ese reporte. Si un reporte falla, por ejemplo el de bitácora mientras falte su tabla, lo indica, sigue con los demás y termina con código 1. Imprime la carpeta y el nombre de cada archivo; ábrelos con el visor de PDF del sistema (por ejemplo `xdg-open <carpeta>`).
 - Si la conexión falla o faltan las tablas, muestran un mensaje claro y terminan con código 1.
 - **Datos de ejemplo:** `BDproyecto.sql` no trae ofertas, así que sin cargarlas la mayoría de las consultas y reportes salen vacíos (el programa avisa). Para probar, inserta ofertas en tu base local, sin modificar el `.sql`. La lógica de este modo está en [Demostracion.cs](ProyectoBD/Backend/src/Demo/Demostracion.cs); no tiene lógica de negocio y se puede borrar cuando exista la interfaz.
 

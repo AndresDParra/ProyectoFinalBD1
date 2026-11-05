@@ -3,7 +3,9 @@ using System.Globalization;
 /// <summary>
 /// Genera los reportes en PDF. Cada reporte sigue los mismos pasos: valida los filtros que eligió el usuario,
 /// pide los datos al DAO, los convierte a texto con el formato que se muestra en pantalla y se los pasa al
-/// <see cref="GeneradorPdf"/>. Cualquier usuario puede generarlos, igual que las consultas, porque solo leen datos.
+/// <see cref="GeneradorPdf"/>. Cualquier usuario puede generar los reportes de productos y proveedores, igual que las
+/// consultas, porque solo leen datos. La excepción es el reporte de bitácora, que es de auditoría y solo puede
+/// generar un Administrador: ese permiso se verifica con <see cref="AutorizacionService"/> antes de tocar la base.
 /// </summary>
 public class ReporteService
 {
@@ -12,11 +14,19 @@ public class ReporteService
 
     private readonly IConsultaDAO _consultaDAO;
     private readonly GeneradorPdf _generadorPdf;
+    private readonly AutorizacionService _autorizacionService;
+    private readonly IBitacoraDAO _bitacoraDAO;
 
-    public ReporteService(IConsultaDAO consultaDAO, GeneradorPdf generadorPdf)
+    public ReporteService(
+        IConsultaDAO consultaDAO,
+        GeneradorPdf generadorPdf,
+        AutorizacionService autorizacionService,
+        IBitacoraDAO bitacoraDAO)
     {
         _consultaDAO = consultaDAO;
         _generadorPdf = generadorPdf;
+        _autorizacionService = autorizacionService;
+        _bitacoraDAO = bitacoraDAO;
     }
 
     /// <summary>
@@ -294,6 +304,70 @@ public class ReporteService
     }
 
     /// <summary>
+    /// Reporte administrativo "Bitácora de acceso" (solo Administrador).
+    ///
+    /// Para qué sirve en el proyecto: el enunciado pide una bitácora con la entrada y la salida de los usuarios al
+    /// sistema. Este reporte la entrega en PDF para que el Administrador la revise o la archive: una fila por sesión
+    /// con el usuario, cuándo entró, cuándo salió y cuánto duró. Las sesiones sin salida (porque el programa se cerró
+    /// sin cerrar sesión) se muestran como "No registrada", y las de usuarios ya eliminados como "(usuario eliminado)".
+    ///
+    /// Permiso: es información de auditoría, por eso lo primero que hace el método es verificar con
+    /// <see cref="AutorizacionService.ValidarRol"/> que <paramref name="idSolicitante"/> sea Administrador; si no, lanza
+    /// <see cref="UnauthorizedAccessException"/> sin consultar la bitácora ni generar nada.
+    ///
+    /// Datos: <see cref="IBitacoraDAO.Consultar"/>, la misma consulta que usa <see cref="BitacoraService"/> (LEFT JOIN de
+    /// bitacora y usuario), de la sesión más reciente a la más antigua.
+    ///
+    /// Filtros del usuario, opcionales: usuario (id) y rango de fechas, aplicado a la fecha de entrada. Las fechas
+    /// llevan hora: para incluir un día completo, <paramref name="hasta"/> debe ser el final de ese día.
+    /// </summary>
+    public byte[] GenerarReporteBitacora(
+        int idSolicitante,
+        int? idUsuario = null,
+        DateTime? desde = null,
+        DateTime? hasta = null)
+    {
+        _autorizacionService.ValidarRol(idSolicitante, RolUsuario.Administrador);
+
+        if (idUsuario <= 0)
+            throw new ArgumentException("El id del usuario debe ser mayor que cero.", nameof(idUsuario));
+
+        if (desde > hasta)
+            throw new ArgumentException("La fecha inicial no puede ser posterior a la final.");
+
+        List<RegistroBitacora> sesiones = _bitacoraDAO.Consultar(idUsuario, desde, hasta);
+
+        var columnas = new List<ColumnaReporte>
+        {
+            new("Id usuario", 1),
+            new("Usuario", 2.5f),
+            new("Entrada", 2),
+            new("Salida", 2),
+            new("Duración", 1.5f),
+        };
+
+        var filas = sesiones
+            .Select(sesion => new[]
+            {
+                sesion.IdUsuario?.ToString(Cultura) ?? "-",
+                sesion.NombreUsuario ?? "(usuario eliminado)",
+                FormatearFechaHora(sesion.FechaEntrada),
+                sesion.FechaSalida is null ? "No registrada" : FormatearFechaHora(sesion.FechaSalida.Value),
+                sesion.FechaSalida is null ? "-" : FormatearDuracion(sesion.FechaSalida.Value - sesion.FechaEntrada),
+            })
+            .ToList();
+
+        return _generadorPdf.GenerarTabla(
+            "Reporte de bitácora de acceso",
+            DescribirFiltros(
+                ("Usuario (id)", idUsuario?.ToString(Cultura)),
+                ("Desde", desde is null ? null : FormatearFechaHora(desde.Value)),
+                ("Hasta", hasta is null ? null : FormatearFechaHora(hasta.Value))),
+            columnas,
+            filas);
+    }
+
+    /// <summary>
     /// Arma el texto "Ciudad: Pereira · Empresa: D1" con los filtros que sí se aplicaron,
     /// o "Sin filtros" si el usuario no eligió ninguno, para que el PDF diga qué datos contiene.
     /// </summary>
@@ -310,6 +384,19 @@ public class ReporteService
     /// <summary>Texto que el PDF muestra junto a la ciudad para que se sepa cómo se calculó la mejor oferta.</summary>
     private static string DescribirAlcance(bool soloProveedoresDeLaCiudad) =>
         soloProveedoresDeLaCiudad ? "mejor oferta entre los proveedores de la ciudad" : "mejor oferta entre todos los proveedores";
+
+    private static string FormatearFechaHora(DateTime fecha) => fecha.ToString("dd/MM/yyyy HH:mm", Cultura);
+
+    /// <summary>Duración de una sesión en lenguaje corriente: "1 h 35 min", "12 min" o "menos de 1 min".</summary>
+    private static string FormatearDuracion(TimeSpan duracion)
+    {
+        int horas = (int)duracion.TotalHours;
+
+        if (horas > 0)
+            return $"{horas} h {duracion.Minutes} min";
+
+        return duracion.Minutes > 0 ? $"{duracion.Minutes} min" : "menos de 1 min";
+    }
 
     internal static string FormatearPrecio(decimal precio) => $"$ {precio.ToString("N0", Cultura)}";
 

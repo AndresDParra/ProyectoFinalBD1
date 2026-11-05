@@ -8,6 +8,10 @@ using System.Text;
 /// </summary>
 public static class Demostracion
 {
+    // ids de los usuarios que trae BDproyecto.sql: 1 es el Administrador y 3 el Vendedor
+    private const int IdAdministrador = 1;
+    private const int IdVendedor = 3;
+
     public const string Ayuda = """
         Modos de demostración (hasta que exista la interfaz gráfica):
           dotnet run -- consultas            Muestra en consola las consultas con JOIN y con subconsultas
@@ -46,11 +50,15 @@ public static class Demostracion
             var consultaDao = new ConsultaDAO();
 
             if (modo == "consultas")
+            {
                 MostrarConsultas(new ConsultaService(consultaDao));
-            else
-                GenerarReportes(new ReporteService(consultaDao, new GeneradorPdf()), args.Length > 1 ? args[1] : null);
+                return 0;
+            }
 
-            return 0;
+            var reportes = new ReporteService(
+                consultaDao, new GeneradorPdf(), new AutorizacionService(new UsuarioDAO()), new BitacoraDAO());
+
+            return GenerarReportes(reportes, args.Length > 1 ? args[1] : null);
         }
         catch (ErrorDeBaseDeDatos excepcion)
         {
@@ -129,7 +137,7 @@ public static class Demostracion
     /// Genera los cinco reportes, varios con y sin filtros para ver que estos cambian el resultado, y escribe
     /// cada PDF en una carpeta. El servicio solo devuelve bytes; guardarlos en archivos es trabajo de quien lo llama.
     /// </summary>
-    private static void GenerarReportes(ReporteService servicio, string? carpetaIndicada)
+    private static int GenerarReportes(ReporteService servicio, string? carpetaIndicada)
     {
         string carpeta = carpetaIndicada ?? Path.Combine(Path.GetTempPath(), "reportes_prueba");
         Directory.CreateDirectory(carpeta);
@@ -147,21 +155,45 @@ public static class Demostracion
             ("4_productos_categoria_libros", () => servicio.GenerarReporteProductosPorCategoria(categoria: "Libros")),
             ("5_resumen_sin_filtros", () => servicio.GenerarReporteResumenPorCategoria()),
             ("5_resumen_electronica", () => servicio.GenerarReporteResumenPorCategoria(categoria: "Electronica")),
+            ("6_bitacora_administrador", () => servicio.GenerarReporteBitacora(IdAdministrador)),
         };
 
         Console.WriteLine($"Generando reportes en: {Path.GetFullPath(carpeta)}");
 
+        int fallidos = 0;
+
         foreach (var (nombre, generar) in reportes)
         {
-            byte[] pdf = generar();
-            string ruta = Path.Combine(carpeta, nombre + ".pdf");
-            File.WriteAllBytes(ruta, pdf);
-            Console.WriteLine($"  {nombre}.pdf  ({pdf.Length / 1024} KB)");
+            try
+            {
+                byte[] pdf = generar();
+                File.WriteAllBytes(Path.Combine(carpeta, nombre + ".pdf"), pdf);
+                Console.WriteLine($"  {nombre}.pdf  ({pdf.Length / 1024} KB)");
+            }
+            catch (ErrorDeBaseDeDatos excepcion)
+            {
+                // un reporte que falla no debe impedir ver los demás; el de bitácora falla mientras la tabla no exista
+                fallidos++;
+                Console.WriteLine($"  {nombre}.pdf  NO GENERADO: {excepcion.InnerException?.Message ?? excepcion.Message}");
+            }
+        }
+
+        // el reporte de bitácora es solo del Administrador: se comprueba que el Vendedor del script sea rechazado
+        try
+        {
+            servicio.GenerarReporteBitacora(IdVendedor);
+            fallidos++;
+            Console.WriteLine($"  PERMISO: el usuario {IdVendedor} pudo generar la bitácora y no debería.");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Console.WriteLine($"  PERMISO: el usuario {IdVendedor} (Vendedor) fue rechazado al pedir la bitácora, como debe ser.");
         }
 
         Console.WriteLine();
         Console.WriteLine("Ábrelos con el visor de PDF del sistema, por ejemplo: xdg-open " + Path.GetFullPath(carpeta));
         Console.WriteLine("Si salen vacíos, falta cargar ofertas en la tabla productosofertados.");
+        return fallidos == 0 ? 0 : 1;
     }
 
     /// <summary>
