@@ -1,0 +1,54 @@
+using System;
+using System.Collections.Generic;
+
+/// <summary>
+/// Interfaz para el acceso a datos de usuarios.
+/// Define los métodos para realizar operaciones CRUD sobre los usuarios.
+/// ademas de diferentes consultas personalizadas sobre el sistema
+/// </summary>
+/// 
+public interface IUsuarioDAO
+{
+    /// <summary>
+    /// metodos para consultar usuario apartir de sus diferentes atributos
+    /// </summary>
+
+    Usuario ObtenerUsuarioPorId(int id);
+    Usuario ObtenerUsuarioPorCorreo(string correo);
+    RolUsuario? ObtenerRolUsuarioPorId(int id); // se habilita el nulleable con '?' para poder retornar null en caso de que no se encuentre el rol del usuario
+
+    /// <summary>
+    /// metodos para consultar listas de usuarios apartir de sus diferentes atributos
+    /// </summary>
+
+    List<Usuario> ObtenerUsuarioPorIdTipo(string tipo);
+
+    /// <summary>
+    /// metodos para consultar lista de proveedores apartir de sus diferentes atributos
+    /// </summary>
+
+    List<Usuario> ObtenerProveedorPorCiudad(string ciudad);
+    List<Usuario> ObtenerProveedorPorNombreEmpresa(string nombreEmpresa);
+
+    /// <summary>
+    ///  metodos para gestionar Usuario
+    /// </summary>
+
+    bool CrearUsuario(Usuario usuario, string contrasenaHash);
+    void ActualizarContrasena(int id, string contrasenaNuevaHash);
+    bool EliminarUsuario(int id);
+
+    /// <summary>
+    /// metodos para validar la existencia de un usuario en el sistema
+    /// </summary>
+
+    bool ExisteUsuario(int id);
+
+    /// <summary>
+    /// metodos para gestionar las credenciales de un usuario
+    /// </summary>
+
+    bool ActualizarUsuario(Usuario usuario);
+    (Usuario Usuario, string Hash)? ObtenerCredencialesPorCorreo(string correo);
+    string? ObtenerHashPorId(int id);
+}

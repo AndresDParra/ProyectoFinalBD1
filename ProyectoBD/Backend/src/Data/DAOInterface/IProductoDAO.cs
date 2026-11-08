@@ -19,5 +19,5 @@ public interface IProductoDAO
     /// <summary>
     /// Verifica si un producto existe por su ID
     /// </summary>
-    bool Existe(string idProducto);
+    bool Existe(int idProducto);
 }
