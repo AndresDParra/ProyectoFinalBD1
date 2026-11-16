@@ -13,3 +13,11 @@
 /home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.pdb
 /home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.genruntimeconfig.cache
 /home/mateo/Documentos/a programacion universidad/bases de datos/bases de datos 1/Proyecto Final/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ref/ProyectoBD.dll
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.GeneratedMSBuildEditorConfig.editorconfig
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.AssemblyInfoInputs.cache
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.AssemblyInfo.cs
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.csproj.CoreCompileInputs.cache
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.sourcelink.json
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.dll
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/refint/ProyectoBD.dll
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/obj/Debug/net10.0/ProyectoBD.pdb

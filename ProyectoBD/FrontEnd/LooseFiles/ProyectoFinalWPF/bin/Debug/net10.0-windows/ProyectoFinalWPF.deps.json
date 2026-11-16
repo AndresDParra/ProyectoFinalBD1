@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "ProyectoFinalWPF/1.0.0": {
+        "runtime": {
+          "ProyectoFinalWPF.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ProyectoFinalWPF/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

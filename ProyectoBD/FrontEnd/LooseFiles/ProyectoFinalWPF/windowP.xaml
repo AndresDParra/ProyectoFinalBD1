@@ -1,0 +1,42 @@
+<Window x:Class="ProyectoFinal.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sistema de Gestión de Proveedores y Productos" Height="600" Width="900">
+    <Grid>
+        <TabControl Margin="10">
+            <!-- 1. Módulo de Entidades (CRUDs) -->
+            <TabItem Header="Entidades (CRUD)">
+                <TabControl Margin="5">
+                    <TabItem Header="Proveedores">
+                        <!-- Formularios y DataGrid de Proveedores -->
+                    </TabItem>
+                    <TabItem Header="Productos y Categorías">
+                        <!-- Formularios y DataGrid de Productos/Categorías -->
+                    </TabItem>
+                </TabControl>
+            </TabItem>
+
+            <!-- 2. Módulo de Consultas -->
+            <TabItem Header="Consultas">
+                <StackPanel Margin="10">
+                    <TextBlock Text="Consultas con JOIN y Subconsultas" FontSize="16" FontWeight="Bold"/>
+                    <ComboBox x:Name="cbConsultas" Margin="0,10,0,10"/>
+                    <DataGrid x:Name="dgConsultas" Height="350" AutoGenerateColumns="True"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- 3. Módulo de Reportes -->
+            <TabItem Header="Reportes (PDF)">
+                <StackPanel Margin="10">
+                    <TextBlock Text="Generación de Reportes Filtrados" FontSize="16" FontWeight="Bold"/>
+                    <!-- Controles de filtro (Fechas, Categorías, Proveedores) y Botón Exportar PDF -->
+                </StackPanel>
+            </TabItem>
+
+            <!-- 4. Módulo de Bitácora y Usuarios (Solo Admin) -->
+            <TabItem x:Name="tabAdmin" Header="Auditoría / Bitácora">
+                <DataGrid x:Name="dgBitacora" Margin="10" AutoGenerateColumns="True"/>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

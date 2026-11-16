@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "J78/Bk8+bXk=",
+  "success": true,
+  "projectFilePath": "/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/GestionVentasWinForms.csproj",
+  "expectedPackageFiles": [
+    "/Users/andresdavidparraparra/.nuget/packages/microsoft.windowsdesktop.app.ref/10.0.12/microsoft.windowsdesktop.app.ref.10.0.12.nupkg.sha512"
+  ],
+  "logs": []
+}

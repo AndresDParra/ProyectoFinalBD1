@@ -1,0 +1,15 @@
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/bin/Debug/net10.0-windows/GestionVentasWinForms
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/bin/Debug/net10.0-windows/GestionVentasWinForms.deps.json
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/bin/Debug/net10.0-windows/GestionVentasWinForms.runtimeconfig.json
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/bin/Debug/net10.0-windows/GestionVentasWinForms.dll
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/bin/Debug/net10.0-windows/GestionVentasWinForms.pdb
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.GeneratedMSBuildEditorConfig.editorconfig
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.AssemblyInfoInputs.cache
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.AssemblyInfo.cs
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.csproj.CoreCompileInputs.cache
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.sourcelink.json
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.dll
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/refint/GestionVentasWinForms.dll
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.pdb
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/GestionVentasWinForms.genruntimeconfig.cache
+/Users/andresdavidparraparra/proyectoFinalBD/ProyectoFinalBD1/ProyectoBD/FrontEnd/LooseFiles/GestionVentasWinForms/obj/Debug/net10.0-windows/ref/GestionVentasWinForms.dll
