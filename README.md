@@ -36,19 +36,19 @@ La aplicación deberá contar con un sistema básico de seguridad que consiste e
 | Proveedor con empresa y ciudad | `Usuario` con rol Proveedor; `nombreempresa` y `ciudad` |
 | Proveedor ofrece varios productos y un producto tiene varios proveedores | Tabla puente `productosofertados` (relación muchos a muchos con precio y tiempo de entrega) |
 | Categorías de productos | Tabla `categoria` y enum `CategoriaProducto` |
-| Login | `AutenticacionService` con contraseñas protegidas con bcrypt |
-| Bitácora de ingreso y salida | Tabla `bitacora` + `BitacoraDAO`; el login registra la entrada y `Logout` la salida (**falta la tabla en `BDproyecto.sql`**, ver [Bitácora](#bitácora-de-entrada-y-salida)) |
+| Login | `AutentificacionService` con contraseñas protegidas con bcrypt |
+| Bitácora de ingreso y salida | Tabla `bitacora` + `BitacoraDAO`; el login registra la entrada y `Logout` la salida (ver [Bitácora](#bitácora-de-entrada-y-salida)) |
 
 ## Estado actual
 
 El backend está implementado como una biblioteca de clases dentro de un proyecto de consola. Contiene:
 
-- Modelos de dominio para usuarios (con rol), productos y productos ofertados.
+- Modelos de dominio para usuarios (con rol), productos, categorías (enum), productos ofertados y bitácora.
 - DAO que acceden a MySQL con SQL parametrizado (`MySql.Data`).
 - Servicios con las reglas de negocio, la autenticación (login con bcrypt) y la autorización por rol.
 - Un script SQL (`BDproyecto.sql`) con el esquema y datos iniciales.
 
-**El proyecto todavía no tiene interfaz gráfica.** [Program.cs](ProyectoBD/Program.cs) sin argumentos solo imprime `Hello, World!`, pero tiene un **modo de demostración** para ver las consultas en la consola y generar los reportes en PDF (ver [Modo de demostración](#modo-de-demostración)). El resto de los servicios se pueden usar desde código.
+**El proyecto todavía no tiene interfaz gráfica.** [Program.cs](ProyectoBD/Program.cs) sin argumentos imprime `Hello, World!` y la ayuda del **modo de demostración**, que sirve para ver las consultas en la consola y generar los reportes en PDF (ver [Modo de demostración](#modo-de-demostración)). El resto de los servicios se pueden usar desde código.
 
 ## Estructura de carpetas
 
@@ -58,8 +58,8 @@ ProyectoFinalBD1/
 ├── README.md
 ├── He gawn                             # Archivo suelto sin uso en el código
 └── ProyectoBD/
-    ├── Program.cs                      # Punto de entrada: "Hello, World!" o modo de demostración
-    ├── ProyectoBD.csproj               # .NET 10; paquetes MySql.Data y BCrypt.Net-Next
+    ├── Program.cs                      # Punto de entrada: "Hello, World!" y ayuda, o modo de demostración
+    ├── ProyectoBD.csproj               # .NET 10; paquetes MySql.Data, BCrypt.Net-Next y QuestPDF
     └── Backend/
         └── src/
             ├── Demo/
@@ -87,11 +87,11 @@ ProyectoFinalBD1/
             │   ├── DAOInterface/       # IUsuarioDAO, IProductoDAO, IProductoOfertadoDAO, IConsultaDAO, IBitacoraDAO
             │   └── exception/          # Excepciones propias de los DAO
             └── Service/                # Casos de uso y reglas de negocio
-                ├── AutentifiacionService.cs     # clase AutenticacionService
+                ├── AutentifiacionService.cs     # clase AutentificacionService
                 ├── AutorizacionService.cs
                 ├── UsuarioService.cs
                 ├── ProductoService.cs
-                ├── ProductoOfertadoService.cs   # contiene la clase ProveedorService
+                ├── ProductoOfertadoService.cs   # contiene la clase ProdcutoOfertadoService
                 ├── ConsultaService.cs
                 ├── BitacoraService.cs
                 ├── Report/             # Reportes en PDF (QuestPDF)
@@ -103,7 +103,7 @@ ProyectoFinalBD1/
 
 Las carpetas `bin/` y `obj/` son artefactos generados por .NET y están excluidas por [.gitignore](.gitignore).
 
-> El archivo `ProductoOfertadoService.cs` declara la clase `ProveedorService`, y `AutentifiacionService.cs` declara `AutenticacionService`. Los nombres de archivo y de clase no coinciden.
+> El archivo `ProductoOfertadoService.cs` declara la clase `ProdcutoOfertadoService`, y `AutentifiacionService.cs` declara `AutentificacionService`. Los nombres de archivo y de clase no coinciden.
 
 ## Arquitectura
 
@@ -118,18 +118,34 @@ MySQL     -> esquema definido en BDproyecto.sql
 ```
 
 - **`Model`**: entidades que validan sus propios datos en el constructor. No contienen SQL.
-- **`Data`**: cada DAO implementa una interfaz y solo lee o escribe datos. Los errores de MySQL se envuelven en `ErrorDeBaseDeDatos` (en `UsuarioDAO`).
+- **`Data`**: cada DAO implementa una interfaz y solo lee o escribe datos. `UsuarioDAO`, `BitacoraDAO` y `ConsultaDAO` envuelven los errores de MySQL en `ErrorDeBaseDeDatos`; `ProductoDAO` y `ProductoOfertadoDAO` dejan pasar `MySqlException`.
 - **`Service`**: decide qué se permite. Recibe los DAO por constructor (como interfaces), de modo que se pueden sustituir por dobles en las pruebas.
+
+### Flujo de una operación
+
+```text
+Program.cs
+  └── Demostracion (modo consola) o código que arme los servicios
+        └── Service
+              ├── AutorizacionService -> IUsuarioDAO -> MySQL (rol del solicitante)
+              └── DAO del dominio     -> Conexion    -> MySQL
+                    └── Model / records (datos de entrada y de salida)
+```
+
+- `Demostracion` es el único punto del proyecto que arma los servicios: crea los DAO, inyecta `AutorizacionService` y `ConsultaService`, y llama a los métodos. No tiene reglas de negocio.
+- `Conexion` es la única clase que construye la cadena de conexión; cada DAO pide una conexión nueva con `Conexion.Obtener()` y la abre con `Open()` (o `OpenAsync()` en `ProbarAsync`).
+- Los servicios reciben interfaces (`IUsuarioDAO`, `IProductoDAO`, `IProductoOfertadoDAO`, `IConsultaDAO`, `IBitacoraDAO`), no las clases concretas. `ReporteService`, además, recibe `GeneradorPdf` y `AutorizacionService`.
+- Los `Model` y los `record` de `Model/Consulta/` son la entrada y la salida de los servicios. Los reportes no devuelven modelos: devuelven el PDF como `byte[]`, y quien llama decide si lo guarda en disco.
 
 ### Roles y permisos
 
 | Rol | Id | Qué puede hacer |
 | --- | --- | --- |
 | Administrador | 1 | Crear, actualizar y eliminar usuarios (`UsuarioService`); crear y eliminar productos (`ProductoService`); consultar la bitácora (`BitacoraService`) y generar el reporte de bitácora (`ReporteService`) |
-| Proveedor (tradicional) | 2 | Crear y eliminar productos (`ProductoService`); crear, consultar, actualizar el precio y eliminar sus productos ofertados (`ProveedorService`) |
+| Proveedor (tradicional) | 2 | Crear y eliminar productos (`ProductoService`); crear, consultar, actualizar el precio y eliminar sus productos ofertados (`ProdcutoOfertadoService`) |
 | Vendedor (esporádico) | 3 | Consultas |
 
-`AutorizacionService.ValidarRol(idSolicitante, rol)` consulta el rol del usuario en la base de datos y lanza `UnauthorizedAccessException` si no coincide. Las operaciones de escritura de `UsuarioService` exigen Administrador, y las de `ProveedorService` exigen Proveedor.
+`AutorizacionService.ValidarRol(idSolicitante, rol)` consulta el rol del usuario en la base de datos y lanza `UnauthorizedAccessException` si no coincide. Las operaciones de escritura de `UsuarioService` exigen Administrador, y las de `ProdcutoOfertadoService` exigen Proveedor.
 
 Reglas del administrador implementadas en `UsuarioService`:
 
@@ -137,9 +153,20 @@ Reglas del administrador implementadas en `UsuarioService`:
 - No se puede actualizar ni eliminar a un administrador.
 - No se puede crear un usuario con un id, correo o cédula ya existentes.
 
+## Modelos
+
+- `Usuario`: entidad con id, datos personales y rol. Valida en el constructor que el id sea positivo y que nombre, dirección, teléfono, cédula, correo, fecha de nacimiento y género no estén vacíos. Si el rol es `Proveedor`, exige `NombreEmpresa` y `Ciudad`; para Administrador y Vendedor exige que ambos sean `null`. Expone `IdTipoUsuario` y `TipoUsuario` a partir del rol. El constructor es `protected` y `UsuarioDAO` lo invoca por reflexión (`Activator.CreateInstance`) para reconstruir la entidad desde MySQL.
+- `RolUsuario`: enum con `Administrador = 1`, `Proveedor = 2` y `Vendedor = 3`; estos valores son los que se guardan en `usuario.rolusuario`.
+- `Producto`: id positivo, nombre y descripción no vacíos, y una categoría que exista en `CategoriaProducto`.
+- `ProductoOfertado`: relación entre proveedor y producto. Valida id de proveedor positivo, precio mayor que cero, tiempo de entrega no negativo y producto no nulo. El precio vive aquí, no en `Producto`, porque cada proveedor pone el suyo.
+- `CategoriaProducto`: enum de las 10 categorías, de `Electronica` (0) a `Peliculas` (9). `ProductoDAO` lo traduce a la columna `producto.categoria` sumando 1.
+- `RegistroBitacora`: `record` de una sesión (`IdBitacora`, `IdUsuario`, `NombreUsuario`, `FechaEntrada`, `FechaSalida`). `SalidaRegistrada` indica si `FechaSalida` tiene valor; `IdUsuario` y `NombreUsuario` son `null` si el usuario fue eliminado.
+- `OfertaDetalle`, `ProductoCategoria`, `ResumenCategoria` y `PortafolioProveedor`: `record` de solo transporte para los resultados de `ConsultaDAO`. No validan nada y son también la entrada de los reportes.
+- `ColumnaReporte`: `record` con el título y el ancho relativo de una columna del PDF.
+
 ## Servicios
 
-### `AutenticacionService`
+### `AutentificacionService`
 - `Login(correo, contrasena)`: verifica el hash bcrypt, **registra la entrada en la bitácora** y devuelve el `Usuario`. Lanza `UnauthorizedAccessException` si las credenciales son inválidas, y no registra nada en ese caso. Ejecuta siempre una verificación, exista o no el correo, para igualar tiempos de respuesta. Si no se puede registrar la entrada, el inicio de sesión falla.
 - `Logout(idUsuario)`: **registra la salida**, cerrando la sesión abierta más reciente del usuario. Devuelve `false` si no tenía ninguna abierta.
 - `CambiarContrasena(idUsuario, actual, nueva)`: exige la contraseña actual.
@@ -154,7 +181,7 @@ Reglas del administrador implementadas en `UsuarioService`:
 - `CrearProducto(idSolicitante, producto)` (rechaza ids duplicados) y `EliminarProducto(idSolicitante, idProducto)` (solo si ningún proveedor lo ofrece). Ambos exigen rol Proveedor o Administrador (`AutorizacionService.ValidarRol`).
 - `ConsultarProducto` está abierto a cualquier usuario.
 
-### `ProveedorService`
+### `ProdcutoOfertadoService`
 - `CrearProductoOfertado`, `EliminarProductoOfertado`, `ActualizarPrecioProductoOfertado` y `ConsultarProductoOfertadoPorProveedor`, todos para el proveedor solicitante.
 - `ConsultarProducOfertadoPorIdProducto`: devuelve la lista de ofertas de un producto (puede haber varios proveedores).
 
@@ -164,7 +191,7 @@ Reglas del administrador implementadas en `UsuarioService`:
 ### `ReporteService`
 Genera los reportes en PDF con [QuestPDF](https://www.questpdf.com) (licencia Community). Cualquier usuario puede generar los cinco reportes de productos y proveedores; el **reporte de bitácora es solo del Administrador** (ver [Reporte administrativo](#reporte-administrativo-bitácora-de-acceso)). Todos los filtros son opcionales: un filtro vacío no se aplica. Cada método devuelve el PDF como `byte[]`, para que quien lo pida decida si lo guarda en un archivo o lo muestra.
 
-El flujo es el mismo para todos los reportes: `ReporteService` valida los filtros, pide los datos a `ConsultaDAO`, los convierte a texto y se los pasa a `GeneradorPdf`, que es la única clase que conoce QuestPDF y dibuja el PDF (título, fecha de generación, filtros aplicados, total de registros, tabla con el encabezado repetido en cada página, número de página y un aviso cuando no hay resultados). Agregar un reporte consiste en dar formato a las filas y definir sus columnas en `ReporteService`.
+El flujo es el mismo para todos los reportes: `ReporteService` valida los filtros, pide los datos a `ConsultaDAO`, los convierte a texto y se los pasa a `GeneradorPdf`, que es la única clase que conoce QuestPDF y dibuja el PDF (título, fecha de generación, filtros aplicados, total de registros, tabla con el encabezado repetido en cada página, número de página y un aviso cuando no hay resultados). Cada columna se declara con `ColumnaReporte(título, ancho relativo)`; agregar un reporte consiste en dar formato a las filas y definir sus columnas en `ReporteService`.
 
 #### Qué reportes hay y por qué
 
@@ -191,7 +218,7 @@ Métodos de `ReporteService`: `GenerarReporteProveedoresPortafolio` (1), `Genera
 
 **Reporte 2: Ofertas de los proveedores** (`GenerarReporteOfertasPorProveedor`)
 - **Finalidad:** responde a "qué productos puede enviar cada proveedor" y refleja que un producto puede adquirirse de varios proveedores. Es el detalle que usaría quien debe elegir a quién hacer un pedido.
-- **Tablas y cómo:** `productosofertados`, `producto`, `categoria` y `usuario`. Una fila por oferta con proveedor, empresa, ciudad, producto, categoría, precio y tiempo de entrega, agrupadas por proveedor.
+- **Tablas y cómo:** `productosofertados`, `producto`, `categoria` y `usuario`. Una fila por oferta con proveedor, empresa, ciudad, producto, categoría, precio y tiempo de entrega, ordenadas por proveedor.
 - **Filtros:** proveedor (id), ciudad, empresa y nombre del producto (coincidencia parcial).
 - **Fuente:** `ConsultarCatalogoOfertas`, ordenada por precio para la consulta y reordenada por proveedor en el reporte.
 
@@ -221,8 +248,8 @@ Además de los cinco reportes que pide el enunciado, hay un sexto que **solo pue
 - **Permiso:** lo primero que hace el método es llamar a `AutorizacionService.ValidarRol(idSolicitante, RolUsuario.Administrador)`. Si el solicitante es Proveedor, Vendedor o no existe, lanza `UnauthorizedAccessException` y **no consulta la bitácora ni genera nada**; esa validación va antes que la de los filtros. Es el mismo permiso que ya tiene `BitacoraService`, porque es información de auditoría.
 - **Datos:** `BitacoraDAO.Consultar` (LEFT JOIN de `bitacora` y `usuario`), de la sesión más reciente a la más antigua. No tiene SQL propio: sigue la regla de una consulta, una fuente.
 - **Filtros (opcionales):** usuario (id) y rango de fechas sobre la fecha de entrada. Las fechas llevan hora: para incluir un día completo, `hasta` debe ser el final de ese día.
-- **Requisito:** la tabla `bitacora` debe existir en la base (ver [Bitácora de entrada y salida](#bitácora-de-entrada-y-salida)); mientras no esté en `BDproyecto.sql`, este reporte falla con `ErrorDeBaseDeDatos`.
-- **Constructor:** por este reporte, `ReporteService` recibe ahora también un `AutorizacionService` y un `IBitacoraDAO`.
+- **Requisito:** la tabla `bitacora` debe existir en la base; está definida en [BDproyecto.sql](BDproyecto.sql) (ver [Bitácora de entrada y salida](#bitácora-de-entrada-y-salida)).
+- **Constructor:** `ReporteService` recibe un `IConsultaDAO`, un `GeneradorPdf`, un `AutorizacionService` y un `IBitacoraDAO`.
 
 ### `ConsultaService`
 Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualquier usuario, sin validación de rol; el DAO es `ConsultaDAO`.
@@ -232,6 +259,7 @@ Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualqui
 | `ConsultarCatalogoOfertas` | JOIN | `productosofertados`, `producto`, `categoria`, `usuario` | `OfertaDetalle`: oferta con su producto, categoría y proveedor. Filtros opcionales: categoría, ciudad y rango de precio |
 | `ConsultarResumenPorCategoria` | JOIN | `categoria`, `producto`, `productosofertados` | `ResumenCategoria`: productos, ofertas y precio mínimo, máximo y promedio por categoría (incluye las categorías sin ofertas) |
 | `ConsultarPortafolioProveedores` | JOIN | `usuario`, `productosofertados`, `producto` | `PortafolioProveedor`: productos y categorías que ofrece cada proveedor, con precio y entrega promedio (incluye a los que no ofrecen nada) |
+| `ConsultarProductosPorCategoria` | JOIN | `producto`, `categoria` | `ProductoCategoria`: productos con el nombre de su categoría. Filtros opcionales: categoría y nombre del producto |
 | `ConsultarMejorOfertaPorProducto` | Subconsulta | `productosofertados`, `producto`, `categoria`, `usuario` | `OfertaDetalle`: la oferta de menor precio de cada producto (todas, si hay empate) |
 | `ConsultarProductosSinOferta` | Subconsulta (`NOT EXISTS`) | `producto`, `productosofertados` | `Producto`: los que ningún proveedor ofrece, que son los únicos que se pueden eliminar |
 
@@ -243,11 +271,14 @@ Consultas de solo lectura que combinan varias tablas. Las puede ejecutar cualqui
 | `ProductoDAO` | Crear, consultar por id, actualizar, eliminar y comprobar existencia |
 | `ProductoOfertadoDAO` | Crear (valida proveedor y producto en una transacción), actualizar precio, consultar por proveedor o por producto, comprobar existencia y eliminar |
 | `BitacoraDAO` | Registrar entrada, registrar salida y consultar la bitácora con filtros opcionales |
-| `ConsultaDAO` | Las cinco consultas con JOIN y subconsultas descritas en `ConsultaService`, y es la fuente de los reportes (reutilizan sus consultas con filtros opcionales); no pertenecen a una sola entidad, por eso están separadas |
+| `ConsultaDAO` | Las seis consultas de `ConsultaService` (cuatro con JOIN y dos con subconsulta), y es la fuente de los reportes (reutilizan sus consultas con filtros opcionales); no pertenecen a una sola entidad, por eso están separadas |
 
 Detalles de implementación:
 - **Categorías:** `categoria.Cacodigo` empieza en 1 y el enum `CategoriaProducto` en 0, por lo que `ProductoDAO` suma 1 al guardar y resta 1 al leer.
 - **Proveedores:** son filas de `usuario` con `rolusuario = 2`; `nombreempresa` y `ciudad` solo se usan con ese rol.
+- **Ids generados:** `UsuarioDAO` y `ProductoDAO` tienen una sobrecarga `Crear(..., out int idGenerado)` que ignora el id del objeto, inserta sin esa columna y devuelve el `AUTO_INCREMENT` de MySQL.
+- **Productos nuevos:** `Producto` exige un id mayor que cero en su constructor, pero `ProductoDAO.Crear` no envía ese id a la base; el id real lo asigna `AUTO_INCREMENT`.
+- **Errores de MySQL:** solo `UsuarioDAO`, `BitacoraDAO` y `ConsultaDAO` los envuelven en `ErrorDeBaseDeDatos`; `ProductoDAO` y `ProductoOfertadoDAO` no lo hacen.
 - **Excepciones:** `Data/exception/` (acceso a datos) y `Service/exception/` (reglas de negocio, por ejemplo correo o cédula duplicados).
 
 ### Conexión
@@ -261,17 +292,20 @@ Usa `SslMode=Preferred` y un tiempo de espera de 5 segundos. La cadena se lee un
 
 ## Base de datos
 
-[BDproyecto.sql](BDproyecto.sql) crea la base `proyecto` (MySQL 8.0 o superior, por su collation `utf8mb4_0900_ai_ci`) con estas tablas:
+[BDproyecto.sql](BDproyecto.sql) es un volcado de MySQL (`mysqldump`) de la base `proyecto` (MySQL 8.0 o superior, por su collation `utf8mb4_0900_ai_ci`). **No crea ni selecciona la base**: hay que importarlo en una base `proyecto` ya existente. Desactiva las comprobaciones de claves foráneas al inicio (`FOREIGN_KEY_CHECKS=0`) y luego crea estas tablas:
 
 | Tabla | Contenido |
 | --- | --- |
+| `bitacora` | `idbitacora`, `idusuario`, `fechaentrada`, `fechasalida` (sin datos iniciales) |
+| `categoria` | `Cacodigo` y `Catipo` (10 categorías iniciales) |
+| `producto` | `Prid` (autoincremental), `nombre`, `descripcion` y `categoria` (20 productos iniciales) |
+| `productosofertados` | `proveedorid`, `producto`, `precio` y `tiempoentrega` (sin datos iniciales; sin llave primaria) |
 | `rolusuario` | Roles: 1 Administrador, 2 proveedor, 3 vendedor |
-| `categoria` | `Cacodigo`, `nombre` (10 categorías iniciales) |
-| `usuario` | Datos personales, `rolusuario`, `nombreempresa`, `ciudad` y `contrasena` (hash). `correo` y `cedula` son únicos; `nombre`, `cedula`, `correo`, `fechanacimiento` y `contrasena` son obligatorios |
-| `producto` | `Prid`, `nombre`, `descripcion`, `categoria` (20 productos iniciales) |
-| `productosofertados` | `proveedorid`, `producto`, `precio`, `tiempoentrega` (sin datos iniciales) |
+| `usuario` | `idusuario` autoincremental, datos personales, `rolusuario`, `nombreempresa` y `ciudad`. Solo `rolusuario` es obligatorio; las demás columnas admiten `NULL`. No tiene columna `contrasena` ni restricciones `UNIQUE` |
 
 > El script **borra y recrea** las tablas (`DROP TABLE IF EXISTS`), así que no lo ejecutes sobre datos que quieras conservar.
+
+> **El script no coincide con los DAO en dos nombres.** `ConsultaDAO` lee `categoria.nombre`, pero la tabla define `categoria.Catipo`; y `UsuarioDAO` lee y escribe `usuario.contrasena`, pero esa columna no existe en la tabla. Contra este script, las consultas que unen `categoria` y el login fallan con `ErrorDeBaseDeDatos`. El resto de la documentación describe el código tal como está.
 
 ### Bitácora de entrada y salida
 
@@ -284,68 +318,59 @@ Cada sesión es una fila de la tabla `bitacora`: se crea al iniciar sesión y se
 | `fechaentrada` | Fecha y hora del inicio de sesión |
 | `fechasalida` | Fecha y hora del cierre de sesión; `NULL` mientras la sesión sigue abierta |
 
-Si el programa se cierra sin llamar a `Logout`, `fechasalida` queda en `NULL` y la sesión se muestra como "salida no registrada" (`RegistroBitacora.SalidaRegistrada`). La interfaz gráfica debería llamar a `Logout` al cerrar sesión y al cerrar la ventana.
+Si el programa se cierra sin llamar a `Logout`, `fechasalida` queda en `NULL` y la sesión se muestra como "salida no registrada" (`RegistroBitacora.SalidaRegistrada`). Hoy nada llama a `Logout` automáticamente: solo se cierra la sesión cuando el código lo invoca.
 
-> **Pendiente en `BDproyecto.sql`:** la tabla `bitacora` todavía no está en el script, y **mientras no exista, el login falla** (`ErrorDeBaseDeDatos`), porque no puede registrar la entrada. Al agregarla, hay que ponerla también al inicio de la lista de `DROP TABLE`, antes de `usuario`. La definición esperada está en el comentario de [BitacoraDAO.cs](ProyectoBD/Backend/src/Data/BitacoraDAO.cs):
->
-> ```sql
-> CREATE TABLE `bitacora` (
->   `idbitacora` int NOT NULL AUTO_INCREMENT,
->   `idusuario` int DEFAULT NULL,
->   `fechaentrada` datetime NOT NULL,
->   `fechasalida` datetime DEFAULT NULL,
->   PRIMARY KEY (`idbitacora`),
->   KEY `idusuario_bitacora_idx` (`idusuario`),
->   CONSTRAINT `idusuario_bitacora` FOREIGN KEY (`idusuario`)
->     REFERENCES `usuario` (`idusuario`) ON DELETE SET NULL
-> ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-> ```
+La tabla ya está en `BDproyecto.sql`; su clave foránea `idusuario` referencia a `usuario` con `ON DELETE SET NULL`, para que el historial sobreviva al borrado del usuario.
 
 ### Usuarios para pruebas
 
-`BDproyecto.sql` crea tres usuarios con contraseña ya cifrada (hash bcrypt), uno por rol. Sirven para probar el login y los permisos de cada rol sin crear usuarios a mano.
+`BDproyecto.sql` inserta tres usuarios, uno por rol, con estos datos:
 
-| Id | Nombre | Rol | Correo | Contraseña | Cédula | Empresa / ciudad |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | `admin` | Administrador | `s@email.com` | `Admin12345` | `12345` | no aplica |
-| 2 | `porvee` | Proveedor | `d@email.com` | `Proveedor12345` | `2345` | `exito` / `armenia` |
-| 3 | `vendedor` | Vendedor | `v@email.com` | `Vendedor12345` | `3456` | no aplica |
+| Id | Nombre | Rol | Correo | Cédula | Empresa / ciudad |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `admin` | Administrador | `s@email.com` | `12345` | `cocacola` / `circasia` |
+| 2 | `porvee` | Proveedor | `d@email.com` | `2345` | `exito` / `armenia` |
+| 3 | `vendedor` | Vendedor | `v@email.com` | `3456` | `D1` / `armenia` |
 
-Qué se puede probar con cada uno:
+> **No sirven para iniciar sesión con este script:** la tabla `usuario` no tiene la columna `contrasena` y los `INSERT` no incluyen ningún hash (ver [Base de datos](#base-de-datos)). El login falla al leer esa columna. Los tres ids sí sirven para probar los permisos de los servicios, porque `idSolicitante` se pasa directamente y `AutorizacionService` consulta el rol en la base.
+
+Qué se puede probar pasando el id de cada uno como `idSolicitante`:
 
 | Usuario | Pruebas útiles |
 | --- | --- |
-| Administrador (`s@email.com`) | Crear, actualizar y eliminar usuarios; crear y eliminar productos. No puede crear otro administrador ni modificar o eliminar al existente |
-| Proveedor (`d@email.com`) | Crear y eliminar productos; crear, consultar, actualizar el precio y eliminar sus productos ofertados. No puede crear usuarios |
-| Vendedor (`v@email.com`) | Solo consultas. Las operaciones de escritura deben fallar con `UnauthorizedAccessException` |
+| Administrador (id 1) | Crear, actualizar y eliminar usuarios; crear y eliminar productos. No puede crear otro administrador ni modificar o eliminar al existente |
+| Proveedor (id 2) | Crear y eliminar productos; crear, consultar, actualizar el precio y eliminar sus productos ofertados. No puede crear usuarios |
+| Vendedor (id 3) | Solo consultas. Las operaciones de escritura deben fallar con `UnauthorizedAccessException` |
 
-Ejemplo de login desde código:
+Ejemplo de validación de permisos desde código:
 
 ```csharp
-var autenticacion = new AutenticacionService(new UsuarioDAO(), new BitacoraDAO());
-Usuario admin = autenticacion.Login("s@email.com", "Admin12345");
+var autorizacion = new AutorizacionService(new UsuarioDAO());
+autorizacion.ValidarRol(1, RolUsuario.Administrador); // pasa
+autorizacion.ValidarRol(3, RolUsuario.Administrador); // UnauthorizedAccessException
 ```
 
 Notas:
 
-- En la base solo se guarda el hash de cada contraseña, nunca el texto. Las contraseñas de esta tabla son las que se usaron para generar esos hashes.
 - El administrador y el vendedor tienen valores en `nombreempresa` y `ciudad` dentro de la tabla, pero el sistema los ignora porque solo se usan con el rol Proveedor.
 - Volver a ejecutar `BDproyecto.sql` borra y recrea las tablas, así que los usuarios que se hayan creado después se pierden y estos tres vuelven a su estado inicial.
-- Los hashes están versionados en el script, así que cualquiera con acceso al repositorio puede deducir estas contraseñas. **Deben cambiarse** en cualquier entorno real.
 
 ## Requisitos
 
 - .NET SDK 10.
 - MySQL Server 8.0 o superior.
-- Paquetes NuGet `MySql.Data` 9.4.0 y `BCrypt.Net-Next` 4.2.0, restaurados automáticamente.
+- Paquetes NuGet `MySql.Data` 9.4.0, `BCrypt.Net-Next` 4.2.0 y `QuestPDF` 2026.9.1, restaurados automáticamente.
 
 ## Cómo ejecutar
 
-1. **Crear la base de datos** (pide la contraseña de MySQL):
+1. **Preparar la base de datos.** El script no crea ni selecciona la base, así que debe existir `proyecto` antes de importarlo (pide la contraseña de MySQL):
 
    ```bash
-   mysql -u tu_usuario -p < BDproyecto.sql
+   mysql -u tu_usuario -p -e "CREATE DATABASE IF NOT EXISTS proyecto DEFAULT CHARACTER SET utf8mb4;"
+   mysql -u tu_usuario -p proyecto < BDproyecto.sql
    ```
+
+   Ten en cuenta que el script actual no define `usuario.contrasena` ni `categoria.nombre` (ver [Base de datos](#base-de-datos)).
 
 2. **Configurar la conexión** si tu MySQL no usa los valores por defecto (`localhost`, usuario `root`, sin contraseña):
 
@@ -366,12 +391,13 @@ Notas:
    dotnet run
    ```
 
-   Sin argumentos solo imprime `Hello, World!` y la ayuda del modo de demostración. No hay menú ni flujo interactivo: para usar los servicios hay que crear los DAO y servicios desde código, por ejemplo:
+   Sin argumentos imprime `Hello, World!` y la ayuda del modo de demostración. No hay menú ni flujo interactivo: para usar los servicios hay que crear los DAO y servicios desde código, por ejemplo:
 
    ```csharp
    var usuarioDao = new UsuarioDAO();
-   var autenticacion = new AutenticacionService(usuarioDao, new BitacoraDAO());
-   Usuario admin = autenticacion.Login("s@email.com", "Admin12345");
+   var autorizacion = new AutorizacionService(usuarioDao);
+   var usuarioService = new UsuarioService(autorizacion, usuarioDao);
+   Usuario admin = usuarioService.ObtenerUsuarioPorId(1);
    ```
 
 El modo de demostración sí comprueba la conexión con `Conexion.ProbarAsync()` antes de empezar; en el resto del código, un error de configuración solo aparece cuando un DAO abre su primera conexión.
@@ -386,7 +412,7 @@ dotnet run -- reportes [carpeta]   # genera los reportes en PDF (por defecto en 
 ```
 
 - **`consultas`** imprime las cinco consultas que pide el enunciado (tres con JOIN y dos con subconsulta) más el listado de productos por categoría, cada una con las tablas que usa y su número de filas.
-- **`reportes`** genera 12 PDF: los cinco reportes, varios de ellos con y sin filtros, para comprobar que los filtros cambian el resultado, y el reporte de bitácora pedido como Administrador (usuario 1 del script). Además comprueba que el Vendedor del script (usuario 3) sea rechazado al pedir ese reporte. Si un reporte falla, por ejemplo el de bitácora mientras falte su tabla, lo indica, sigue con los demás y termina con código 1. Imprime la carpeta y el nombre de cada archivo; ábrelos con el visor de PDF del sistema (por ejemplo `xdg-open <carpeta>`).
+- **`reportes`** genera 12 PDF: los cinco reportes, varios de ellos con y sin filtros, para comprobar que los filtros cambian el resultado, y el reporte de bitácora pedido como Administrador (usuario 1 del script). Además comprueba que el Vendedor del script (usuario 3) sea rechazado al pedir ese reporte. Si un reporte falla (por ejemplo, por una tabla o una columna faltante), lo indica, sigue con los demás y termina con código 1. Imprime la carpeta y el nombre de cada archivo; ábrelos con el visor de PDF del sistema (por ejemplo `xdg-open <carpeta>`).
 - Si la conexión falla o faltan las tablas, muestran un mensaje claro y terminan con código 1.
 - **Datos de ejemplo:** `BDproyecto.sql` no trae ofertas, así que sin cargarlas la mayoría de las consultas y reportes salen vacíos (el programa avisa). Para probar, inserta ofertas en tu base local, sin modificar el `.sql`. La lógica de este modo está en [Demostracion.cs](ProyectoBD/Backend/src/Demo/Demostracion.cs); no tiene lógica de negocio y se puede borrar cuando exista la interfaz.
 
@@ -398,17 +424,16 @@ El proyecto **no tiene pruebas automatizadas**: el equipo retiró la carpeta de 
 
 Funcionalidades que el enunciado pide y todavía no están (o no están completas):
 
-1. **Tabla `bitacora` en `BDproyecto.sql`.** El código de la bitácora ya está hecho, pero falta la tabla (ver [Bitácora](#bitácora-de-entrada-y-salida)); sin ella el login falla.
-2. **Sesión.** `Login` devuelve el usuario y `Logout` cierra la sesión en la bitácora, pero no hay un objeto de sesión; la interfaz deberá recordar al usuario autenticado y llamar a `Logout` al salir.
-3. **Gestión de categorías.** Existe la tabla y el enum, pero no hay modelo, DAO ni servicio para crear, consultar, actualizar o eliminar categorías y sus datos básicos.
-4. **Actualizar productos.** `ProductoService` no tiene operación de actualización; `ProductoDAO.Actualizar` existe pero ningún servicio la expone.
-5. **Más búsquedas para el usuario esporádico.** `ConsultaService` ya filtra ofertas por categoría, ciudad y rango de precio, y `ConsultarProductosPorCategoria` busca productos por categoría y por nombre. Faltaría, a lo sumo, exponer los filtros nuevos del catálogo (proveedor, empresa y nombre del producto), que hoy solo usa el reporte 2.
-6. **Proveedores de cualquier ciudad de Colombia.** La ciudad es texto libre, sin validación ni catálogo de ciudades.
-7. **Un solo administrador a nivel de base de datos.** Hoy solo lo impide el servicio; la tabla no lo garantiza.
-8. **`productosofertados` sin llave primaria** `(proveedorid, producto)`: la base permite ofertas repetidas.
-9. **Interfaz de usuario.** Menú de consola o API web con login, y un `Program.cs` que arme los servicios.
-10. **Pruebas automatizadas** (descartadas por ahora; ver la sección anterior).
-11. **Mostrar los resultados de las consultas en la interfaz.** El modo de demostración las imprime en consola, pero no hay pantalla de la aplicación que las muestre. Además, `productosofertados` no trae datos iniciales, así que las consultas devuelven vacío hasta que se carguen ofertas.
-12. **Mostrar los reportes en la interfaz.** Los cinco reportes están generados y verificados, y el modo de demostración los guarda como PDF, pero `ReporteService` solo devuelve los bytes: falta la interfaz que los guarde o los muestre, con los filtros que elija el usuario.
+1. **Sesión.** `Login` devuelve el usuario y `Logout` cierra la sesión en la bitácora, pero no hay un objeto de sesión; la interfaz deberá recordar al usuario autenticado y llamar a `Logout` al salir.
+2. **Gestión de categorías.** Existe la tabla y el enum, pero no hay modelo, DAO ni servicio para crear, consultar, actualizar o eliminar categorías y sus datos básicos.
+3. **Actualizar productos.** `ProductoService` no tiene operación de actualización; `ProductoDAO.Actualizar` existe pero ningún servicio la expone.
+4. **Más búsquedas para el usuario esporádico.** `ConsultaService` ya filtra ofertas por categoría, ciudad y rango de precio, y `ConsultarProductosPorCategoria` busca productos por categoría y por nombre. Faltaría, a lo sumo, exponer los filtros nuevos del catálogo (proveedor, empresa y nombre del producto), que hoy solo usa el reporte 2.
+5. **Proveedores de cualquier ciudad de Colombia.** La ciudad es texto libre, sin validación ni catálogo de ciudades.
+6. **Un solo administrador a nivel de base de datos.** Hoy solo lo impide el servicio; la tabla no lo garantiza.
+7. **`productosofertados` sin llave primaria** `(proveedorid, producto)`: la base permite ofertas repetidas.
+8. **Interfaz de usuario.** Menú de consola o API web con login, y un `Program.cs` que arme los servicios.
+9. **Pruebas automatizadas** (descartadas por ahora; ver la sección anterior).
+10. **Mostrar los resultados de las consultas en la interfaz.** El modo de demostración las imprime en consola, pero no hay pantalla de la aplicación que las muestre. Además, `productosofertados` no trae datos iniciales, así que las consultas devuelven vacío hasta que se carguen ofertas.
+11. **Mostrar los reportes en la interfaz.** Los cinco reportes están generados y verificados, y el modo de demostración los guarda como PDF, pero `ReporteService` solo devuelve los bytes: falta la interfaz que los guarde o los muestre, con los filtros que elija el usuario.
 
-Mejoras técnicas que se dejaron anotadas: longitudes de columna cortas sin validar en el modelo (`correo` 25, `telefono` 10, `nombreempresa` 20), manejo de errores de MySQL solo en `UsuarioDAO`, y renombrar `ProveedorService` y `AutenticacionService` para que coincidan con sus archivos.
+Mejoras técnicas que se dejaron anotadas: longitudes de columna cortas sin validar en el modelo (`correo` 25, `telefono` 10, `nombreempresa` 20), manejo de errores de MySQL únicamente en `UsuarioDAO`, `BitacoraDAO` y `ConsultaDAO`, y renombrar `ProdcutoOfertadoService` y `AutentificacionService` para que coincidan con sus archivos.
