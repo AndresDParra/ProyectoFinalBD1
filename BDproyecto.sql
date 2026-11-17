@@ -165,7 +165,7 @@ CREATE TABLE `usuario` (
   `rolusuario` int NOT NULL,
   `nombreempresa` varchar(20) DEFAULT NULL,
   `ciudad` varchar(30) DEFAULT NULL,
-  `contrasena` varchar(15) DEFAULT NULL,
+  `contrasena` varchar(15) NOT NULL,
   PRIMARY KEY (`idusuario`),
   KEY `idrol_idx` (`rolusuario`),
   CONSTRAINT `idrol` FOREIGN KEY (`rolusuario`) REFERENCES `rolusuario` (`idrol`)
@@ -190,4 +190,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-16 20:07:46
+-- Dump completed on 2026-11-16 20:11:00
