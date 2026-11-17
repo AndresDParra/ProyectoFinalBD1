@@ -165,7 +165,7 @@ CREATE TABLE `usuario` (
   `rolusuario` int NOT NULL,
   `nombreempresa` varchar(20) DEFAULT NULL,
   `ciudad` varchar(30) DEFAULT NULL,
-  `contraseña` varchar(15) NOT NULL,
+  `contrasena` varchar(60) NOT NULL,
   PRIMARY KEY (`idusuario`),
   KEY `idrol_idx` (`rolusuario`),
   CONSTRAINT `idrol` FOREIGN KEY (`rolusuario`) REFERENCES `rolusuario` (`idrol`)

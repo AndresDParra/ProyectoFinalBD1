@@ -21,7 +21,7 @@ public class ConsultaDAO : IConsultaDAO
                u.ciudad,
                p.Prid,
                p.nombre AS producto,
-               c.nombre AS categoria,
+               c.Catipo AS categoria,
                po.precio,
                po.tiempoentrega
         FROM productosofertados po
@@ -100,7 +100,7 @@ public class ConsultaDAO : IConsultaDAO
     {
         const string sql = $"""
             {SelectOfertaDetalle}
-            WHERE (@categoria IS NULL OR c.nombre = @categoria)
+            WHERE (@categoria IS NULL OR c.Catipo = @categoria)
               AND (@ciudad IS NULL OR u.ciudad = @ciudad)
               AND (@precioMinimo IS NULL OR po.precio >= @precioMinimo)
               AND (@precioMaximo IS NULL OR po.precio <= @precioMaximo)
@@ -133,7 +133,7 @@ public class ConsultaDAO : IConsultaDAO
     public List<ResumenCategoria> ConsultarResumenPorCategoria(string? categoria)
     {
         const string sql = """
-            SELECT c.nombre AS categoria,
+            SELECT c.Catipo AS categoria,
                    COUNT(DISTINCT p.Prid) AS productos,
                    COUNT(po.producto) AS ofertas,
                    MIN(po.precio) AS preciominimo,
@@ -142,8 +142,8 @@ public class ConsultaDAO : IConsultaDAO
             FROM categoria c
             LEFT JOIN producto p ON p.categoria = c.Cacodigo
             LEFT JOIN productosofertados po ON po.producto = p.Prid
-            WHERE (@categoria IS NULL OR c.nombre = @categoria)
-            GROUP BY c.Cacodigo, c.nombre
+            WHERE (@categoria IS NULL OR c.Catipo = @categoria)
+            GROUP BY c.Cacodigo, c.Catipo
             ORDER BY c.Cacodigo;
             """;
 
@@ -261,10 +261,10 @@ public class ConsultaDAO : IConsultaDAO
             SELECT p.Prid,
                    p.nombre AS producto,
                    p.descripcion,
-                   c.nombre AS categoria
+                   c.Catipo AS categoria
             FROM producto p
             INNER JOIN categoria c ON c.Cacodigo = p.categoria
-            WHERE (@categoria IS NULL OR c.nombre = @categoria)
+            WHERE (@categoria IS NULL OR c.Catipo = @categoria)
               AND (@nombreProducto IS NULL OR p.nombre LIKE CONCAT('%', @nombreProducto, '%'))
             ORDER BY c.Cacodigo, p.nombre, p.Prid;
             """;
