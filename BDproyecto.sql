@@ -165,6 +165,7 @@ CREATE TABLE `usuario` (
   `rolusuario` int NOT NULL,
   `nombreempresa` varchar(20) DEFAULT NULL,
   `ciudad` varchar(30) DEFAULT NULL,
+  `contraseña` varchar(15) NOT NULL,
   PRIMARY KEY (`idusuario`),
   KEY `idrol_idx` (`rolusuario`),
   CONSTRAINT `idrol` FOREIGN KEY (`rolusuario`) REFERENCES `rolusuario` (`idrol`)
@@ -177,7 +178,7 @@ CREATE TABLE `usuario` (
 
 LOCK TABLES `usuario` WRITE;
 /*!40000 ALTER TABLE `usuario` DISABLE KEYS */;
-INSERT INTO `usuario` VALUES (1,'admin','casa','3124253567','12345','s@email.com','1970-09-12','M',1,'cocacola','circasia'),(2,'porvee','apartamento','314567890','2345','d@email.com','2000-10-11','M',2,'exito','armenia'),(3,'vendedor','finca','314567890','3456','v@email.com','1990-12-03','F',3,'D1','armenia');
+INSERT INTO `usuario` VALUES (1,'admin','casa','3124253567','12345','s@email.com','1970-09-12','M',1,'cocacola','circasia','h123'),(2,'porvee','apartamento','314567890','2345','d@email.com','2000-10-11','M',2,'exito','armenia','e123'),(3,'vendedor','finca','314567890','3456','v@email.com','1990-12-03','F',3,'D1','armenia','g123');
 /*!40000 ALTER TABLE `usuario` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -190,4 +191,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-07 22:08:02
+-- Dump completed on 2026-11-16 18:55:26
